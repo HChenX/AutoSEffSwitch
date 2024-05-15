@@ -8,7 +8,9 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 public class XposedInit implements IXposedHookLoadPackage {
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
-        HookInit.setTAG("AutoSEffSwitch");
-        HookInit.initLoadPackageParam(lpparam);
+        if ("com.miui.misound".equals(lpparam.packageName)) {
+            HookInit.setTAG("AutoSEffSwitch");
+            HookInit.initLoadPackageParam(lpparam);
+        }
     }
 }
