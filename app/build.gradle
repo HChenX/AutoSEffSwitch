@@ -1,0 +1,95 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.kotlin)
+}
+
+android {
+    Properties properties = new Properties()
+    InputStream inputStream = project.rootProject.file('local.properties').newDataInputStream()
+    properties.load(inputStream)
+
+    def keyKeyStoreFile = file(properties.getProperty('keyStoreFile'))
+    def keyKeyStorePassword = properties.getProperty('keyStorePassword')
+    def keyKeyAlias = properties.getProperty('keyAlias')
+    def keyKeyAliasPassword = properties.getProperty('keyAliasPassword')
+
+
+    signingConfigs {
+        release {
+            storeFile keyKeyStoreFile
+            storePassword keyKeyStorePassword
+            keyAlias keyKeyAlias
+            keyPassword keyKeyAliasPassword
+            enableV2Signing true
+            enableV3Signing true
+            enableV4Signing true
+        }
+    }
+
+    namespace 'com.hchen.autoseffswitch'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.hchen.autoseffswitch"
+        minSdk 29
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+        ndk {
+            // noinspection ChromeOsAbiSupport
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
+
+        signingConfig signingConfigs.release
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    packagingOptions {
+        resources {
+            excludes += "/META-INF/**"
+            excludes += "/kotlin/**"
+            excludes += "/*.txt"
+            excludes += "/*.bin"
+            excludes += "/*.json"
+        }
+        /*dex {
+            useLegacyPackaging = true
+        }
+        jniLibs {
+            useLegacyPackaging true
+        }*/
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_20.toString()
+    }
+}
+
+dependencies {
+
+    implementation libs.annotations
+    implementation libs.hooktool
+    implementation libs.dexkit
+    compileOnly libs.api
+    //    implementation libs.appcompat
+    //    implementation libs.material
+    //    testImplementation libs.junit
+    //    androidTestImplementation libs.ext.junit
+    //    androidTestImplementation libs.espresso.core
+}
