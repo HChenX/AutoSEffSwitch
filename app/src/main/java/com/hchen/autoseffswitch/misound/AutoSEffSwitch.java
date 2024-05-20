@@ -73,6 +73,7 @@ public class AutoSEffSwitch {
                         intentFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
                         intentFilter.addAction(AudioManager.ACTION_HEADSET_PLUG);
                         application.registerReceiver(new Listener(), intentFilter);
+                        logE(TAG, "app: " + application + " intent: " + intentFilter);
                     }
                 });
     }
@@ -87,6 +88,7 @@ public class AutoSEffSwitch {
                 @Override
                 public void after(ParamTool param, StaticTool staticTool) {
                     miDolby = param.thisObject();
+                    logE(TAG, "mi dolby: " + miDolby);
                 }
             }, int.class, int.class);
         }
@@ -108,6 +110,7 @@ public class AutoSEffSwitch {
                         @Override
                         public void after(ParamTool param, StaticTool staticTool) {
                             miAudio = XposedHelpers.getObjectField(param.thisObject(), name);
+                            logE(TAG, "mi audio: " + miAudio);
                         }
                     }, int.class, int.class);
                 }
@@ -141,6 +144,7 @@ public class AutoSEffSwitch {
                         if (mode != null) {
                             param.setResult(mode);
                         }
+                        logE(TAG, "b: " + isBluetoothA2dpOn + " w: " + isWiredHeadsetOn + " mode: " + mode);
                     }
                 });
 
@@ -155,6 +159,7 @@ public class AutoSEffSwitch {
                                     if ("none".equals(o) || "dolby".equals(o) || "misound".equals(o))
                                         mode = (String) o;
                                 }
+                                logE(TAG, "o: " + o);
                             }
                         });
 
@@ -165,6 +170,7 @@ public class AutoSEffSwitch {
                     @Override
                     public void after(ParamTool param, StaticTool staticTool) {
                         mode = null;
+                        logE(TAG, "this");
                     }
                 });
             }
@@ -179,7 +185,19 @@ public class AutoSEffSwitch {
 
     private static Object getAudioEffect() {
         if (AudioEffect == null) return null;
-        return getAudio(AudioEffect);
+        // Class<?> DolbyAudioEffectHelper = findClassIfExists("com.android.server.audio.dolbyeffect.DolbyEffectController$DolbyAudioEffectHelper",
+        //         ClassLoader.getSystemClassLoader());
+        // logE(TAG, "DolbyAudioEffectHelper: " + DolbyAudioEffectHelper);
+        // UUID dolby = (UUID) XposedHelpers.getStaticObjectField(
+        //         DolbyAudioEffectHelper, "EFFECT_TYPE_DOLBY_AUDIO_PROCESSING");
+        UUID EFFECT_TYPE_NULL = indTool.getStaticField(AudioEffect, "EFFECT_TYPE_NULL");
+        UUID dolby;
+        if (uuid.isEmpty()) {
+            dolby = UUID.fromString("9d4921da-8225-4f29-aefa-39537a04bcaa");
+        } else {
+            dolby = UUID.fromString(uuid);
+        }
+        return indTool.newInstance(AudioEffect, new Object[]{EFFECT_TYPE_NULL, dolby, 0, 0});
     }
 
     private static Object getMiSound() {
@@ -197,22 +215,6 @@ public class AutoSEffSwitch {
 
     private static void setEnable(Object o, boolean value) {
         indTool.callMethod(o, "setEnabled", value);
-    }
-
-    private static Object getAudio(Class<?> AudioEffect) {
-        // Class<?> DolbyAudioEffectHelper = findClassIfExists("com.android.server.audio.dolbyeffect.DolbyEffectController$DolbyAudioEffectHelper",
-        //         ClassLoader.getSystemClassLoader());
-        // logE(TAG, "DolbyAudioEffectHelper: " + DolbyAudioEffectHelper);
-        // UUID dolby = (UUID) XposedHelpers.getStaticObjectField(
-        //         DolbyAudioEffectHelper, "EFFECT_TYPE_DOLBY_AUDIO_PROCESSING");
-        UUID EFFECT_TYPE_NULL = indTool.getStaticField(AudioEffect, "EFFECT_TYPE_NULL");
-        UUID dolby;
-        if (uuid.isEmpty()) {
-            dolby = UUID.fromString("9d4921da-8225-4f29-aefa-39537a04bcaa");
-        } else {
-            dolby = UUID.fromString(uuid);
-        }
-        return indTool.newInstance(AudioEffect, new Object[]{EFFECT_TYPE_NULL, dolby, 0, 0});
     }
 
     public static class Listener extends BroadcastReceiver {
@@ -264,6 +266,7 @@ public class AutoSEffSwitch {
                     lastMiui = true;
                 }
             }
+            logE(TAG, "last dolby: " + lastDolby + " last miui: " + lastMiui);
             refresh(context, false, false);
         }
 
