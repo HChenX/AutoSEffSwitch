@@ -33,7 +33,8 @@ android {
         applicationId "com.hchen.autoseffswitch"
         minSdk 29
         targetSdk 34
-        versionCode 1
+        //noinspection HighAppVersionCode
+        versionCode 2024052000
         versionName "1.0"
         ndk {
             // noinspection ChromeOsAbiSupport
