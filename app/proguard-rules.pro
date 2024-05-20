@@ -21,3 +21,4 @@
 #-renamesourcefileattribute SourceFile
 
 -keep class com.hchen.autoseffswitch.XposedInit
+-keep class com.hchen.autoseffswitch.misound.AutoSEffSwitch
