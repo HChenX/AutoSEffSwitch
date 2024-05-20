@@ -34,11 +34,13 @@
 
 # 🙏致谢名单
 
-- 本模块代码参考了如下项目，对此表示由衷的感谢：
+- 本模块使用了如下项目作为依赖或引用其代码，对此表示由衷的感谢：
 
 |   项目名称   |                      项目链接                      |
 |:--------:|:----------------------------------------------:|
 | HookTool | [HookTool](https://github.com/HChenX/HookTool) |
+| LSPosed  | [LSPosed](https://github.com/LSPosed/LSPosed)  |
+|  DexKit  | [DexKit](https://github.com/LuckyPray/DexKit)  |
 |   翻译提供   |                      提供者                       |
 |   简体中文   |                    焕晨HChen                     |
 
