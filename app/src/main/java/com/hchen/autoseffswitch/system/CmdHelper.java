@@ -14,7 +14,6 @@ import java.io.PrintWriter;
 
 public class CmdHelper extends BaseHC {
     private Context mContext;
-    private static final String TAG = "CmdHelper";
 
     @Override
     public void init() {

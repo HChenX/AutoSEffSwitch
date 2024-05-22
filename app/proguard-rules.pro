@@ -22,3 +22,4 @@
 
 -keep class com.hchen.autoseffswitch.XposedInit
 -keep class com.hchen.autoseffswitch.misound.AutoSEffSwitch
+-keep class com.hchen.autoseffswitch.system.CmdHelper

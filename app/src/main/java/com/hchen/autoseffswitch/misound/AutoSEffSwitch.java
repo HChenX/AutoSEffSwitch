@@ -33,7 +33,6 @@ import java.util.UUID;
 import de.robv.android.xposed.XposedHelpers;
 
 public class AutoSEffSwitch extends BaseHC {
-    private static final String TAG = "AutoSEffSwitch";
     private static Object miDolby = null;
     private static Object miAudio = null;
     private static String uuid = "";
