@@ -73,7 +73,7 @@ public class CmdHelper extends BaseHook {
         printWriter.println("    设置音效效果UUID标识符。");
         printWriter.println("    举例:[pm aseff -s \"<UUID>\"]");
         printWriter.println("-------------------------------------");
-        printWriter.println("From AutoSEffSwitch, Version v.1.0, Author: HChenX");
+        printWriter.println("From AutoSEffSwitch, Version v.1.5, Author: HChenX");
     }
 
     private void setUUID(ParamTool paramTool, PrintWriter printWriter, String UUID) {
