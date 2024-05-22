@@ -11,7 +11,7 @@ import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.provider.Settings;
 
-import com.hchen.hooktool.BaseHook;
+import com.hchen.hooktool.BaseHC;
 import com.hchen.hooktool.callback.IAction;
 import com.hchen.hooktool.tool.ParamTool;
 import com.hchen.hooktool.tool.StaticTool;
@@ -32,7 +32,7 @@ import java.util.UUID;
 
 import de.robv.android.xposed.XposedHelpers;
 
-public class AutoSEffSwitch extends BaseHook {
+public class AutoSEffSwitch extends BaseHC {
     private static final String TAG = "AutoSEffSwitch";
     private static Object miDolby = null;
     private static Object miAudio = null;
@@ -52,8 +52,6 @@ public class AutoSEffSwitch extends BaseHook {
 
     @Override
     public void init() {
-        hcHook.setThisTag(getClass().getSimpleName());
-
         AudioEffect = hcHook.findClass(Enum.AudioEffect, "android.media.audiofx.AudioEffect",
                 ClassLoader.getSystemClassLoader()).get();
         MiSound = hcHook.findClass(Enum.MiSound, "android.media.audiofx.MiSound",
@@ -73,7 +71,7 @@ public class AutoSEffSwitch extends BaseHook {
                         intentFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
                         intentFilter.addAction(AudioManager.ACTION_HEADSET_PLUG);
                         application.registerReceiver(new Listener(), intentFilter);
-                        logE(TAG, "app: " + application + " intent: " + intentFilter);
+                        // logE(TAG, "application: " + application + " intentFilter: " + intentFilter);
                     }
                 });
     }
@@ -88,7 +86,7 @@ public class AutoSEffSwitch extends BaseHook {
                 @Override
                 public void after(ParamTool param, StaticTool staticTool) {
                     miDolby = param.thisObject();
-                    logE(TAG, "mi dolby: " + miDolby);
+                    // logE(TAG, "mi dolby: " + miDolby);
                 }
             }, int.class, int.class);
         }
@@ -110,7 +108,7 @@ public class AutoSEffSwitch extends BaseHook {
                         @Override
                         public void after(ParamTool param, StaticTool staticTool) {
                             miAudio = XposedHelpers.getObjectField(param.thisObject(), name);
-                            logE(TAG, "mi audio: " + miAudio);
+                            // logE(TAG, "mi audio: " + miAudio);
                         }
                     }, int.class, int.class);
                 }
@@ -144,7 +142,7 @@ public class AutoSEffSwitch extends BaseHook {
                         if (mode != null) {
                             param.setResult(mode);
                         }
-                        logE(TAG, "b: " + isBluetoothA2dpOn + " w: " + isWiredHeadsetOn + " mode: " + mode);
+                        // logE(TAG, "isBluetoothA2dpOn: " + isBluetoothA2dpOn + " isBluetoothA2dpOn: " + isBluetoothA2dpOn + " mode: " + mode);
                     }
                 });
 
@@ -159,7 +157,7 @@ public class AutoSEffSwitch extends BaseHook {
                                     if ("none".equals(o) || "dolby".equals(o) || "misound".equals(o))
                                         mode = (String) o;
                                 }
-                                logE(TAG, "o: " + o);
+                                // logE(TAG, "o: " + o);
                             }
                         });
 
@@ -170,7 +168,7 @@ public class AutoSEffSwitch extends BaseHook {
                     @Override
                     public void after(ParamTool param, StaticTool staticTool) {
                         mode = null;
-                        logE(TAG, "this");
+                        // logE(TAG, "this");
                     }
                 });
             }
@@ -272,7 +270,7 @@ public class AutoSEffSwitch extends BaseHook {
                     lastMiui = true;
                 }
             }
-            logE(TAG, "last dolby: " + lastDolby + " last miui: " + lastMiui);
+            // logE(TAG, "last dolby: " + lastDolby + " last miui: " + lastMiui);
             refresh(context, false, false);
         }
 

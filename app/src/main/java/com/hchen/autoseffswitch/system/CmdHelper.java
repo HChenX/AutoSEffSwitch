@@ -5,14 +5,14 @@ import static com.hchen.hooktool.log.XposedLog.logE;
 import android.content.Context;
 import android.provider.Settings;
 
-import com.hchen.hooktool.BaseHook;
+import com.hchen.hooktool.BaseHC;
 import com.hchen.hooktool.callback.IAction;
 import com.hchen.hooktool.tool.ParamTool;
 import com.hchen.hooktool.tool.StaticTool;
 
 import java.io.PrintWriter;
 
-public class CmdHelper extends BaseHook {
+public class CmdHelper extends BaseHC {
     private Context mContext;
     private static final String TAG = "CmdHelper";
 
@@ -50,13 +50,13 @@ public class CmdHelper extends BaseHook {
                                     param.setResult(0);
                                 }
                                 case "-s" -> {
-                                    try {
-                                        String next = param.callMethod("getNextArgRequired");
-                                        setUUID(param, getOutPrintWriter, next);
-                                    } catch (IllegalArgumentException e) {
-                                        getOutPrintWriter.println("-s must be followed by a numerical parameter! For details, please refer to - h\n" + e);
+                                    String next = param.callMethod("getNextArgRequired");
+                                    if (next == null) {
+                                        getOutPrintWriter.println("-s must be followed by a numerical parameter! For details, please refer to - h.");
                                         param.setResult(-1);
+                                        return;
                                     }
+                                    setUUID(param, getOutPrintWriter, next);
                                 }
                             }
                         }
@@ -73,7 +73,7 @@ public class CmdHelper extends BaseHook {
         printWriter.println("    设置音效效果UUID标识符。");
         printWriter.println("    举例:[pm aseff -s \"<UUID>\"]");
         printWriter.println("-------------------------------------");
-        printWriter.println("From AutoSEffSwitch, Version v.1.5, Author: HChenX");
+        printWriter.println("From AutoSEffSwitch, Version v.1.6, Author: HChenX");
     }
 
     private void setUUID(ParamTool paramTool, PrintWriter printWriter, String UUID) {
