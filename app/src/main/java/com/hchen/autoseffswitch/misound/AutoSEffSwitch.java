@@ -1,7 +1,6 @@
 package com.hchen.autoseffswitch.misound;
 
 import static com.hchen.hooktool.log.XposedLog.logE;
-import static com.hchen.hooktool.utils.DataUtils.lpparam;
 
 import android.app.Application;
 import android.bluetooth.BluetoothDevice;
@@ -12,12 +11,10 @@ import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.provider.Settings;
 
-import com.hchen.hooktool.HCHook;
+import com.hchen.hooktool.BaseHook;
 import com.hchen.hooktool.callback.IAction;
-import com.hchen.hooktool.tool.INDTool;
-import com.hchen.hooktool.tool.hook.DexkitTool;
-import com.hchen.hooktool.tool.hook.ParamTool;
-import com.hchen.hooktool.tool.hook.StaticTool;
+import com.hchen.hooktool.tool.ParamTool;
+import com.hchen.hooktool.tool.StaticTool;
 
 import org.luckypray.dexkit.DexKitBridge;
 import org.luckypray.dexkit.query.FindClass;
@@ -33,28 +30,30 @@ import org.luckypray.dexkit.result.MethodData;
 import java.lang.reflect.Method;
 import java.util.UUID;
 
-import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 
-public class AutoSEffSwitch {
+public class AutoSEffSwitch extends BaseHook {
     private static final String TAG = "AutoSEffSwitch";
     private static Object miDolby = null;
     private static Object miAudio = null;
     private static String uuid = "";
     private String mode = null;
-    private static INDTool indTool;
-    private DexkitTool dexkitTool;
+    private final DexKitBridge dexKitBridge;
     private static Class<?> AudioEffect = null;
     private static Class<?> MiSound = null;
+
+    public AutoSEffSwitch(DexKitBridge dexKitBridge) {
+        this.dexKitBridge = dexKitBridge;
+    }
 
     enum Enum {
         MiSoundApplication, AudioEffect, MiSound
     }
 
-    public void init(HCHook hcHook, DexKitBridge dexKitBridge) {
+    @Override
+    public void init() {
         hcHook.setThisTag(getClass().getSimpleName());
-        indTool = hcHook.indTool();
-        dexkitTool = hcHook.dexkitTool();
+
         AudioEffect = hcHook.findClass(Enum.AudioEffect, "android.media.audiofx.AudioEffect",
                 ClassLoader.getSystemClassLoader()).get();
         MiSound = hcHook.findClass(Enum.MiSound, "android.media.audiofx.MiSound",
@@ -68,6 +67,7 @@ public class AutoSEffSwitch {
                     @Override
                     public void after(ParamTool param, StaticTool staticTool) {
                         Application application = param.thisObject();
+                        getUUID(application);
                         IntentFilter intentFilter = new IntentFilter();
                         intentFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
                         intentFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
@@ -129,7 +129,7 @@ public class AutoSEffSwitch {
         ).singleOrNull();
         try {
             if (methodData == null) {
-                logE(TAG, "null");
+                logE(TAG, "method data is null");
             } else {
                 Method method = methodData.getMethodInstance(lpparam.classLoader);
                 dexkitTool.hookMethod(methodData, new IAction() {
@@ -154,7 +154,7 @@ public class AutoSEffSwitch {
                         new IAction() {
                             @Override
                             public void before(ParamTool param, StaticTool staticTool) {
-                                Object o = param.first();
+                                Object o = param.second();
                                 if (o instanceof String) {
                                     if ("none".equals(o) || "dolby".equals(o) || "misound".equals(o))
                                         mode = (String) o;
@@ -179,6 +179,12 @@ public class AutoSEffSwitch {
         }
     }
 
+    private void getUUID(Context context) {
+        String result = Settings.Global.getString(context.getContentResolver(), "aseff_uuid");
+        if (result == null) return;
+        uuid = result;
+    }
+
     private static String effectImplementer(Context context) {
         return Settings.Global.getString(context.getContentResolver(), "effect_implementer");
     }
@@ -190,31 +196,31 @@ public class AutoSEffSwitch {
         // logE(TAG, "DolbyAudioEffectHelper: " + DolbyAudioEffectHelper);
         // UUID dolby = (UUID) XposedHelpers.getStaticObjectField(
         //         DolbyAudioEffectHelper, "EFFECT_TYPE_DOLBY_AUDIO_PROCESSING");
-        UUID EFFECT_TYPE_NULL = indTool.getStaticField(AudioEffect, "EFFECT_TYPE_NULL");
+        UUID EFFECT_TYPE_NULL = expandTool.getStaticField(AudioEffect, "EFFECT_TYPE_NULL");
         UUID dolby;
         if (uuid.isEmpty()) {
             dolby = UUID.fromString("9d4921da-8225-4f29-aefa-39537a04bcaa");
         } else {
             dolby = UUID.fromString(uuid);
         }
-        return indTool.newInstance(AudioEffect, new Object[]{EFFECT_TYPE_NULL, dolby, 0, 0});
+        return expandTool.newInstance(AudioEffect, new Object[]{EFFECT_TYPE_NULL, dolby, 0, 0});
     }
 
     private static Object getMiSound() {
         if (MiSound == null) return null;
-        return indTool.newInstance(MiSound, new Object[]{1, 0});
+        return expandTool.newInstance(MiSound, new Object[]{1, 0});
     }
 
     private static boolean hasControl(Object o) {
-        return Boolean.TRUE.equals(indTool.callMethod(o, "hasControl"));
+        return Boolean.TRUE.equals(expandTool.callMethod(o, "hasControl"));
     }
 
     private static boolean isEnable(Object o) {
-        return Boolean.TRUE.equals(indTool.callMethod(o, "getEnabled"));
+        return Boolean.TRUE.equals(expandTool.callMethod(o, "getEnabled"));
     }
 
     private static void setEnable(Object o, boolean value) {
-        indTool.callMethod(o, "setEnabled", value);
+        expandTool.callMethod(o, "setEnabled", value);
     }
 
     public static class Listener extends BroadcastReceiver {
