@@ -1,5 +1,5 @@
 <div align="center">
-<h1>RegularlyClean</h1>
+<h1>AutoSEffSwitch</h1>
 
 ![stars](https://img.shields.io/github/stars/HChenX/AutoSEffSwitch?style=flat)
 ![downloads](https://img.shields.io/github/downloads/HChenX/AutoSEffSwitch/total)
