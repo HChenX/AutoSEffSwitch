@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
+import android.os.Build;
 import android.provider.Settings;
 
 import com.hchen.hooktool.BaseHC;
@@ -275,7 +276,11 @@ public class AutoSEffSwitch extends BaseHC {
 
         private void refresh(Context context, boolean dolby, boolean miui) {
             Intent intent = new Intent();
-            intent.setAction("miui.intent.action.ACTION_AUDIO_EFFECT_REFRESH");
+            if (Build.VERSION.SDK_INT >= 35) {
+                intent.setAction("miui.intent.action.ACTION_SYSTEM_UI_DOLBY_EFFECT_SWITCH");
+            } else {
+                intent.setAction("miui.intent.action.ACTION_AUDIO_EFFECT_REFRESH");
+            }
             intent.putExtra("dolby_active", dolby);
             intent.putExtra("misound_active", miui);
             context.sendBroadcast(intent);
