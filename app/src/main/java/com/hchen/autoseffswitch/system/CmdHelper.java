@@ -6,62 +6,64 @@ import android.content.Context;
 import android.provider.Settings;
 
 import com.hchen.hooktool.BaseHC;
-import com.hchen.hooktool.callback.IAction;
-import com.hchen.hooktool.tool.ParamTool;
-import com.hchen.hooktool.tool.StaticTool;
+import com.hchen.hooktool.hook.IHook;
 
 import java.io.PrintWriter;
 
+/**
+ * 注入命令。
+ *
+ * @author 焕晨HChen
+ */
 public class CmdHelper extends BaseHC {
     private Context mContext;
 
     @Override
     public void init() {
-        classTool.findClass("PackageManagerShellCommand",
-                        "com.android.server.pm.PackageManagerShellCommand")
-                .getMethod("onCommand", String.class)
-                .hook(new IAction() {
+        hookMethod("com.android.server.pm.PackageManagerShellCommand",
+                "onCommand", String.class,
+                new IHook() {
                     @Override
-                    public void before(ParamTool param, StaticTool staticTool) {
-                        String cmd = param.first();
-                        mContext = param.getField("mContext");
+                    public void before() {
+                        String cmd = getArgs(0);
+                        mContext = getThisField("mContext");
                         if (mContext == null) {
                             logE(TAG, "onCommand context is null!!");
                             return;
                         }
                         if (cmd == null) return;
                         if ("aseff".equals(cmd)) {
-                            PrintWriter getOutPrintWriter = param.callMethod("getOutPrintWriter");
-                            String getNextOption = param.callMethod("getNextOption");
+                            PrintWriter getOutPrintWriter = callThisMethod("getOutPrintWriter");
+                            String getNextOption = callThisMethod("getNextOption");
                             if (getOutPrintWriter == null) {
                                 logE(TAG, "onCommand getOutPrintWriter is null!!");
-                                param.setResult(-1);
+                                setResult(-1);
                                 return;
                             }
                             if (getNextOption == null) {
                                 getOutPrintWriter.println("[pinning] must be followed by an option! For details, please refer to -h");
-                                param.setResult(-1);
+                                setResult(-1);
                                 return;
                             }
                             switch (getNextOption) {
                                 case "-h", "--help" -> {
                                     help(getOutPrintWriter);
-                                    param.setResult(0);
+                                    setResult(0);
                                 }
                                 case "-s" -> {
-                                    String next = param.callMethod("getNextArgRequired");
+                                    String next = callThisMethod("getNextArgRequired");
                                     if (next == null) {
                                         getOutPrintWriter.println("-s must be followed by a numerical parameter! For details, please refer to - h.");
-                                        param.setResult(-1);
+                                        setResult(-1);
                                         return;
                                     }
-                                    setUUID(param, getOutPrintWriter, next);
+                                    setUUID(this, getOutPrintWriter, next);
                                 }
                             }
                         }
                     }
-                });
-
+                }
+        );
     }
 
     private void help(PrintWriter printWriter) {
@@ -75,19 +77,19 @@ public class CmdHelper extends BaseHC {
         printWriter.println("From AutoSEffSwitch, Version v.1.6, Author: HChenX");
     }
 
-    private void setUUID(ParamTool paramTool, PrintWriter printWriter, String UUID) {
+    private void setUUID(IHook iHook, PrintWriter printWriter, String UUID) {
         if (mContext != null) {
             try {
                 Settings.Global.putString(mContext.getContentResolver(), "aseff_uuid", UUID);
                 printWriter.println("Set UUID successfully: " + UUID);
-                paramTool.setResult(0);
+                iHook.setResult(0);
             } catch (Throwable e) {
                 printWriter.println("Something went wrong: " + e);
-                paramTool.setResult(-1);
+                iHook.setResult(-1);
             }
         } else {
             printWriter.println("The context is null!");
-            paramTool.setResult(-1);
+            iHook.setResult(-1);
         }
     }
 }
