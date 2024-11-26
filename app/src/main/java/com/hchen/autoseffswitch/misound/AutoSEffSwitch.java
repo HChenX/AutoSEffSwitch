@@ -208,7 +208,11 @@ public class AutoSEffSwitch extends BaseHC {
 
     private static Object getMiSound() {
         if (MiSound == null) return null;
-        return newInstance(MiSound, 1, 0);
+        if (Build.VERSION.SDK_INT >= 35) {
+            return newInstance(MiSound, 0, 0);
+        } else {
+            return newInstance(MiSound, 1, 0);
+        }
     }
 
     private static boolean hasControl(Object o) {
