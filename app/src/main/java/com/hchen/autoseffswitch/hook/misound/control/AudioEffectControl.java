@@ -29,9 +29,11 @@ import static com.hchen.hooktool.tool.CoreTool.callMethod;
 import static com.hchen.hooktool.tool.CoreTool.findClass;
 import static com.hchen.hooktool.tool.CoreTool.getField;
 import static com.hchen.hooktool.tool.CoreTool.hook;
+import static com.hchen.hooktool.tool.CoreTool.hookAll;
 import static com.hchen.hooktool.tool.CoreTool.newInstance;
 
 import android.content.Context;
+import android.os.Bundle;
 
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.hooktool.hook.IHook;
@@ -45,6 +47,7 @@ import org.luckypray.dexkit.query.matchers.MethodMatcher;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 
 /**
  * 老版本的切换逻辑
@@ -111,22 +114,25 @@ public class AudioEffectControl implements IControl {
                 }
             });
 
-            Method headsetSettings = mDexKit.findMethod(FindMethod.create()
-                    .matcher(MethodMatcher.create()
-                            .declaredClass(ClassMatcher.create().usingStrings("supports spatial audio 3.0 "))
-                            .usingStrings("supports spatial audio 3.0 ")
-                    )
-            ).singleOrNull().getMethodInstance(classLoader);
+            Class<?> activityClass = mDexKit.findClass(FindClass.create()
+                    .matcher(ClassMatcher.create().usingStrings("supports spatial audio 3.0 "))
+            ).singleOrNull().getInstance(classLoader);
+            Method create = activityClass.getDeclaredMethod("onCreatePreferences", Bundle.class, String.class);
+            Method onResume = activityClass.getDeclaredMethod("onResume");
             Field effectSelectionField = mDexKit.findField(FindField.create()
                     .matcher(FieldMatcher.create()
-                            .declaredClass(ClassMatcher.create().usingStrings("supports spatial audio 3.0 "))
+                            .declaredClass(activityClass)
                             .type(findClass("miuix.preference.DropDownPreference").get())
                             .addReadMethod(MethodMatcher.create()
-                                    .declaredClass(ClassMatcher.create().usingStrings("supports spatial audio 3.0 "))
+                                    .declaredClass(activityClass)
                                     .usingStrings("updateEffectSelectionPreference(): set as ")
                             )
                     )).singleOrNull().getFieldInstance(classLoader);
-            hook(headsetSettings, new IHook() {
+            ArrayList<Method> methods = new ArrayList<>();
+            methods.add(create);
+            methods.add(onResume);
+
+            hookAll(methods, new IHook() {
                 @Override
                 public void after() {
                     effectSelectionPrefs = getField(thisObject(), effectSelectionField);
@@ -137,8 +143,8 @@ public class AudioEffectControl implements IControl {
 
             Method broadcastReceiver = mDexKit.findMethod(FindMethod.create()
                     .matcher(MethodMatcher.create()
-                            .declaredClass(ClassMatcher.create().usingStrings("onReceive: switch effect when bt connected"))
-                            .usingStrings("onReceive: switch effect when bt connected")
+                            .declaredClass(ClassMatcher.create().usingStrings("onReceive: to refreshEnable"))
+                            .usingStrings("onReceive: to refreshEnable")
                     )
             ).singleOrNull().getMethodInstance(classLoader);
             hook(broadcastReceiver, new IHook() {
@@ -153,6 +159,7 @@ public class AudioEffectControl implements IControl {
     }
 
     private void updateEffectSelectionState() {
+        if (effectSelectionPrefs == null) return;
         if (isEarPhoneConnection) {
             callMethod(effectSelectionPrefs, "setEnabled", false);
             logI(TAG, "Disable effect selection: " + effectSelectionPrefs);

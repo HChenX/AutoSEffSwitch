@@ -26,6 +26,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+
+import androidx.annotation.NonNull;
 
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.autoseffswitch.hook.misound.control.AudioEffectControl;
@@ -46,8 +51,10 @@ public class NewAutoSEffSwitch extends BaseHC {
     public static DexKitBridge mDexKit;
     public static boolean isEarPhoneConnection = false;
     private static AudioManager mAudioManager;
+    private DumpHandler mDumpHandler;
     private FWAudioEffectControl mFWAudioEffectControl = null;
     private AudioEffectControl mAudioEffectControl = null;
+    private static final int DUMP = 0;
     private IControl mControl;
 
     @Override
@@ -77,6 +84,7 @@ public class NewAutoSEffSwitch extends BaseHC {
         intentFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
         intentFilter.addAction(AudioManager.ACTION_HEADSET_PLUG);
         mContext.registerReceiver(new AudioManagerListener(), intentFilter);
+        mDumpHandler = new DumpHandler(mContext.getMainLooper());
 
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
     }
@@ -103,16 +111,15 @@ public class NewAutoSEffSwitch extends BaseHC {
                         isEarPhoneConnection = true;
                         mControl.updateLastEffectState();
                         mControl.setEffectToNone(mContext);
-                        mControl.dumpAudioEffectState();
+                        dump();
                     }
                     case BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                         logI(TAG, "ACTION_ACL_DISCONNECTED!");
                         isEarPhoneConnection = false;
                         mControl.resetAudioEffect();
-                        mControl.dumpAudioEffectState();
+                        dump();
                     }
                     case AudioManager.ACTION_HEADSET_PLUG -> {
-
                         if (intent.hasExtra("state")) {
                             int state = intent.getIntExtra("state", 0);
                             if (state == 1) {
@@ -120,16 +127,38 @@ public class NewAutoSEffSwitch extends BaseHC {
                                 isEarPhoneConnection = true;
                                 mControl.updateLastEffectState();
                                 mControl.setEffectToNone(mContext);
-                                mControl.dumpAudioEffectState();
+                                dump();
                             } else if (state == 0) {
                                 logI(TAG, "ACTION_HEADSET_PLUG DISCONNECTED!");
                                 isEarPhoneConnection = false;
                                 mControl.resetAudioEffect();
                                 mControl.dumpAudioEffectState();
+                                dump();
                             }
                         }
                     }
                 }
+            }
+        }
+
+        private void dump() {
+            if (mDumpHandler.hasMessages(DUMP))
+                mDumpHandler.removeMessages(0);
+            mDumpHandler.sendEmptyMessageDelayed(DUMP, 1000);
+        }
+    }
+
+    private class DumpHandler extends Handler {
+        public DumpHandler(Looper looper) {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            int what = msg.what;
+
+            if (what == DUMP) {
+                mControl.dumpAudioEffectState();
             }
         }
     }

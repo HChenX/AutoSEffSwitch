@@ -30,6 +30,7 @@ import static com.hchen.hooktool.tool.CoreTool.findClass;
 import static com.hchen.hooktool.tool.CoreTool.getField;
 import static com.hchen.hooktool.tool.CoreTool.getStaticField;
 import static com.hchen.hooktool.tool.CoreTool.hook;
+import static com.hchen.hooktool.tool.CoreTool.hookAll;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -63,6 +64,7 @@ public class FWAudioEffectControl implements IControl {
     private String EFFECT_NONE = "";
     private String EFFECT_SPATIAL_AUDIO = "";
     private String EFFECT_SURROUND = "";
+    private Object effectSelectionPrefs;
     private final List<String> mEffectList = new ArrayList<>();
     private final List<String> mLastEffectStateList = new ArrayList<>();
 
@@ -123,26 +125,25 @@ public class FWAudioEffectControl implements IControl {
                     )
             ).singleOrNull().getMethodInstance(classLoader);
             Method create = activityClass.getDeclaredMethod("onCreatePreferences", Bundle.class, String.class);
+            Method onResume = activityClass.getDeclaredMethod("onResume");
             Field prefsField = mDexKit.findField(FindField.create()
                     .matcher(FieldMatcher.create()
                             .declaredClass(activityClass)
                             .type(findClass("miuix.preference.DropDownPreference").get())
                     )
             ).singleOrNull().getFieldInstance(classLoader);
-            hook(create, new IHook() {
+            ArrayList<Method> methods = new ArrayList<>();
+            methods.add(refresh);
+            methods.add(create);
+            methods.add(onResume);
+
+            hookAll(methods, new IHook() {
                 @Override
                 public void after() {
                     updateEarPhoneState();
 
-                    Object prefs = getField(thisObject(), prefsField);
-                    updateEffectSelectionState(prefs);
-                }
-            });
-            hook(refresh, new IHook() {
-                @Override
-                public void after() {
-                    Object prefs = getField(thisObject(), prefsField);
-                    updateEffectSelectionState(prefs);
+                    effectSelectionPrefs = getField(thisObject(), prefsField);
+                    updateEffectSelectionState();
                 }
             });
         } catch (Throwable e) {
@@ -152,12 +153,13 @@ public class FWAudioEffectControl implements IControl {
         logI(TAG, "D: " + EFFECT_DOLBY + ", M: " + EFFECT_MISOUND + ", N: " + EFFECT_NONE + ", S: " + EFFECT_SPATIAL_AUDIO + ", SU: " + EFFECT_SURROUND);
     }
 
-    private void updateEffectSelectionState(Object prefs) {
+    private void updateEffectSelectionState() {
+        if (effectSelectionPrefs == null) return;
         if (isEarPhoneConnection) {
-            callMethod(prefs, "setEnabled", false);
-            logI(TAG, "Disable effect selection: " + prefs);
+            callMethod(effectSelectionPrefs, "setEnabled", false);
+            logI(TAG, "Disable effect selection: " + effectSelectionPrefs);
         } else
-            callMethod(prefs, "setEnabled", true);
+            callMethod(effectSelectionPrefs, "setEnabled", true);
     }
 
     private boolean isEffectSupported(String effect) {
@@ -201,7 +203,18 @@ public class FWAudioEffectControl implements IControl {
 
     @Override
     public void resetAudioEffect() {
-        mLastEffectStateList.forEach(s -> setEffectActive(s, true));
+        if (mLastEffectStateList.isEmpty()) {
+            if (isEffectSupported(EFFECT_DOLBY) && isEffectAvailable(EFFECT_DOLBY))
+                setEffectActive(EFFECT_DOLBY, true);
+            else if (isEffectSupported(EFFECT_MISOUND) && isEffectAvailable(EFFECT_MISOUND))
+                setEffectActive(EFFECT_MISOUND, true);
+
+            if (isEffectSupported(EFFECT_SPATIAL_AUDIO) && isEffectAvailable(EFFECT_SPATIAL_AUDIO))
+                setEffectActive(EFFECT_SPATIAL_AUDIO, true);
+            if (isEffectSupported(EFFECT_SURROUND) && isEffectAvailable(EFFECT_SURROUND))
+                setEffectActive(EFFECT_SURROUND, true);
+        } else
+            mLastEffectStateList.forEach(s -> setEffectActive(s, true));
         mLastEffectStateList.clear();
     }
 
