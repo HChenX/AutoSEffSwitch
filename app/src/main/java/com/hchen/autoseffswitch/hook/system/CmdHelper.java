@@ -1,4 +1,22 @@
-package com.hchen.autoseffswitch.system;
+/*
+ * This file is part of AutoSEffSwitch.
+
+ * AutoSEffSwitch is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+ * Copyright (C) 2023-2024 AutoSEffSwitch Contributions
+ */
+package com.hchen.autoseffswitch.hook.system;
 
 import static com.hchen.hooktool.log.XposedLog.logE;
 
@@ -14,8 +32,10 @@ import java.io.PrintWriter;
  * 注入命令。
  *
  * @author 焕晨HChen
+ * @deprecated
  */
-public class CmdHelper extends BaseHC {
+@Deprecated
+public final class CmdHelper extends BaseHC {
     private Context mContext;
 
     @Override
@@ -25,16 +45,16 @@ public class CmdHelper extends BaseHC {
                 new IHook() {
                     @Override
                     public void before() {
-                        String cmd = getArgs(0);
-                        mContext = getThisField("mContext");
+                        String cmd = (String) getArgs(0);
+                        mContext = (Context) getThisField("mContext");
                         if (mContext == null) {
                             logE(TAG, "onCommand context is null!!");
                             return;
                         }
                         if (cmd == null) return;
                         if ("aseff".equals(cmd)) {
-                            PrintWriter getOutPrintWriter = callThisMethod("getOutPrintWriter");
-                            String getNextOption = callThisMethod("getNextOption");
+                            PrintWriter getOutPrintWriter = (PrintWriter) callThisMethod("getOutPrintWriter");
+                            String getNextOption = (String) callThisMethod("getNextOption");
                             if (getOutPrintWriter == null) {
                                 logE(TAG, "onCommand getOutPrintWriter is null!!");
                                 setResult(-1);
@@ -51,7 +71,7 @@ public class CmdHelper extends BaseHC {
                                     setResult(0);
                                 }
                                 case "-s" -> {
-                                    String next = callThisMethod("getNextArgRequired");
+                                    String next = (String) callThisMethod("getNextArgRequired");
                                     if (next == null) {
                                         getOutPrintWriter.println("-s must be followed by a numerical parameter! For details, please refer to - h.");
                                         setResult(-1);

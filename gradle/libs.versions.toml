@@ -1,13 +1,15 @@
 [versions]
 agp = "8.4.2"
-kotlin = "2.0.21"
+kotlin = "2.1.0"
 annotations = "23.0.0"
 api = "82"
 dexkit = "2.0.2"
-hooktool = "v.1.0.7"
+hooktool = "v.1.1.2"
+annotation = "1.9.1"
 
 [libraries]
 annotations = { module = "org.jetbrains:annotations", version.ref = "annotations" }
+annotation = { module = "androidx.annotation:annotation-jvm", version.ref = "annotation" }
 api = { module = "de.robv.android.xposed:api", version.ref = "api" }
 dexkit = { module = "org.luckypray:dexkit", version.ref = "dexkit" }
 hooktool = { module = "com.github.HChenX:HookTool", version.ref = "hooktool" }
@@ -15,4 +17,3 @@ hooktool = { module = "com.github.HChenX:HookTool", version.ref = "hooktool" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-kotlin = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-

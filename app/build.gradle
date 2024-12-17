@@ -34,8 +34,8 @@ android {
         minSdk 29
         targetSdk 34
         //noinspection HighAppVersionCode
-        versionCode 2024052201
-        versionName "1.6"
+        versionCode 2024121700
+        versionName "2.0"
         ndk {
             // noinspection ChromeOsAbiSupport
             abiFilters 'arm64-v8a', 'armeabi-v7a'
@@ -69,12 +69,6 @@ android {
             excludes += "/*.bin"
             excludes += "/*.json"
         }
-        /*dex {
-            useLegacyPackaging = true
-        }
-        jniLibs {
-            useLegacyPackaging true
-        }*/
     }
 
     kotlinOptions {
@@ -83,14 +77,8 @@ android {
 }
 
 dependencies {
-
     implementation libs.annotations
     implementation libs.hooktool
     implementation libs.dexkit
     compileOnly libs.api
-    //    implementation libs.appcompat
-    //    implementation libs.material
-    //    testImplementation libs.junit
-    //    androidTestImplementation libs.ext.junit
-    //    androidTestImplementation libs.espresso.core
 }

@@ -1,4 +1,22 @@
-package com.hchen.autoseffswitch.misound;
+/*
+ * This file is part of AutoSEffSwitch.
+
+ * AutoSEffSwitch is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+ * Copyright (C) 2023-2024 AutoSEffSwitch Contributions
+ */
+package com.hchen.autoseffswitch.hook.misound;
 
 import static com.hchen.hooktool.log.XposedLog.logE;
 
@@ -33,8 +51,10 @@ import java.util.UUID;
  * 连接蓝牙自动切换为原声。
  *
  * @author 焕晨HChen
+ * @deprecated
  */
-public class AutoSEffSwitch extends BaseHC {
+@Deprecated
+public final class AutoSEffSwitch extends BaseHC {
     private static Object miDolby = null;
     private static Object miAudio = null;
     private static String uuid = "";
@@ -48,7 +68,7 @@ public class AutoSEffSwitch extends BaseHC {
     }
 
     @Override
-    public void init() {
+    protected void init() {
         AudioEffect = findClass("android.media.audiofx.AudioEffect", ClassLoader.getSystemClassLoader()).get();
         MiSound = findClass("android.media.audiofx.MiSound", ClassLoader.getSystemClassLoader()).get();
 
@@ -56,7 +76,7 @@ public class AutoSEffSwitch extends BaseHC {
         hookMethod("com.miui.misound.MiSoundApplication", "onCreate", new IHook() {
             @Override
             public void after() {
-                Application application = thisObject();
+                Application application = (Application) thisObject();
                 getUUID(application);
                 IntentFilter intentFilter = new IntentFilter();
                 intentFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
@@ -133,7 +153,7 @@ public class AutoSEffSwitch extends BaseHC {
                     new IHook() {
                         @Override
                         public void before() {
-                            Context context = callThisMethod("getActivity");
+                            Context context = (Context) callThisMethod("getActivity");
                             boolean isBluetoothA2dpOn = ((AudioManager) context.getSystemService(Context.AUDIO_SERVICE)).isBluetoothA2dpOn();
                             boolean isWiredHeadsetOn = ((AudioManager) context.getSystemService(Context.AUDIO_SERVICE)).isWiredHeadsetOn();
                             if (isBluetoothA2dpOn || isWiredHeadsetOn) {
@@ -196,7 +216,7 @@ public class AutoSEffSwitch extends BaseHC {
         // logE(TAG, "DolbyAudioEffectHelper: " + DolbyAudioEffectHelper);
         // UUID dolby = (UUID) XposedHelpers.getStaticObjectField(
         //         DolbyAudioEffectHelper, "EFFECT_TYPE_DOLBY_AUDIO_PROCESSING");
-        UUID EFFECT_TYPE_NULL = getStaticField(AudioEffect, "EFFECT_TYPE_NULL");
+        UUID EFFECT_TYPE_NULL = (UUID) getStaticField(AudioEffect, "EFFECT_TYPE_NULL");
         UUID dolby;
         if (uuid.isEmpty()) {
             dolby = UUID.fromString("9d4921da-8225-4f29-aefa-39537a04bcaa");
