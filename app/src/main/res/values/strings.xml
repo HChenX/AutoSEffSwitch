@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">AutoSEffSwitch</string>
+    <string name="app_summary">连接耳机时自动切换音效效果为原声</string>
 </resources>

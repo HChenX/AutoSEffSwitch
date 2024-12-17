@@ -12,7 +12,7 @@
             android:resource="@array/hook_app" />
         <meta-data
             android:name="xposeddescription"
-            android:value="@string/app_name" />
+            android:value="@string/app_summary" />
         <meta-data
             android:name="xposedsharedprefs"
             android:value="true" />

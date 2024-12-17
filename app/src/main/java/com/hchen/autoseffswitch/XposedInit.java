@@ -44,7 +44,7 @@ public class XposedInit extends HCEntrance {
 
     @Override
     public void onLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
-        if ("com.miui.misound".equals(lpparam.packageName) || "android".equals(lpparam.packageName)) {
+        if ("com.miui.misound".equals(lpparam.packageName)) {
             HCInit.initLoadPackageParam(lpparam);
             init(lpparam.packageName, lpparam);
         }
