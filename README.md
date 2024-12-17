@@ -39,9 +39,7 @@
 |    项目名称     |                            项目链接                            |
 |:-----------:|:----------------------------------------------------------:|
 |  HookTool   |       [HookTool](https://github.com/HChenX/HookTool)       |
-|   LSPosed   |       [LSPosed](https://github.com/LSPosed/LSPosed)        |
 |   DexKit    |       [DexKit](https://github.com/LuckyPray/DexKit)        |
-| HyperCeiler | [HyperCeiler](https://github.com/ReChronoRain/HyperCeiler) |
 |    翻译提供     |                            提供者                             |
 |    简体中文     |                          焕晨HChen                           |
 
