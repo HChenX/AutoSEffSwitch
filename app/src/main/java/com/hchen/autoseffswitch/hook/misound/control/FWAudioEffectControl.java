@@ -159,20 +159,18 @@ public class FWAudioEffectControl implements IControl {
 
                     callMethod(preferenceScreen, "addPreference", preferenceCategory);
                     callMethod(preferenceCategory, "addPreference", mPreference);
-
                     logI(TAG, "create pref category: " + preferenceCategory);
-                    updateEarPhoneState();
 
                     effectSelectionPrefs = getField(thisObject(), prefsField);
+                    updateEarPhoneState();
                     updateEffectSelectionState();
                 }
             });
             hookAll(methods, new IHook() {
                 @Override
                 public void after() {
-                    updateEarPhoneState();
-
                     effectSelectionPrefs = getField(thisObject(), prefsField);
+                    updateEarPhoneState();
                     updateEffectSelectionState();
                     updateAutoSEffSwitchInfo();
                 }

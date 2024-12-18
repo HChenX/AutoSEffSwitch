@@ -19,7 +19,9 @@
 package com.hchen.autoseffswitch.hook.misound.control;
 
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.TAG;
+import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.getEarPhoneState;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isEarPhoneConnection;
+import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isSupportFW;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.mDexKit;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.updateEarPhoneState;
 import static com.hchen.hooktool.BaseHC.classLoader;
@@ -29,7 +31,6 @@ import static com.hchen.hooktool.tool.CoreTool.callMethod;
 import static com.hchen.hooktool.tool.CoreTool.findClass;
 import static com.hchen.hooktool.tool.CoreTool.getField;
 import static com.hchen.hooktool.tool.CoreTool.hook;
-import static com.hchen.hooktool.tool.CoreTool.hookAll;
 import static com.hchen.hooktool.tool.CoreTool.newInstance;
 
 import android.content.Context;
@@ -47,7 +48,6 @@ import org.luckypray.dexkit.query.matchers.MethodMatcher;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 
 /**
  * 老版本的切换逻辑
@@ -63,6 +63,7 @@ public class AudioEffectControl implements IControl {
     private boolean mLastMiSoundEnabled = false;
     private Object effectSelectionPrefs;
     private Method mSetEnableMethod = null;
+    private Object mPreference;
 
     public void init() {
         try {
@@ -91,7 +92,7 @@ public class AudioEffectControl implements IControl {
             hook(dolbySwitch, new IHook() {
                 @Override
                 public void before() {
-                    if (isEarPhoneConnection) {
+                    if (getEarPhoneState()) {
                         returnNull();
                         logI(TAG, "Don't set dolby mode, in earphone mode!");
                     }
@@ -107,7 +108,7 @@ public class AudioEffectControl implements IControl {
             hook(miSoundSwitch, new IHook() {
                 @Override
                 public void before() {
-                    if (isEarPhoneConnection) {
+                    if (getEarPhoneState()) {
                         returnNull();
                         logI(TAG, "Don't set misound mode, in earphone mode!");
                     }
@@ -128,16 +129,40 @@ public class AudioEffectControl implements IControl {
                                     .usingStrings("updateEffectSelectionPreference(): set as ")
                             )
                     )).singleOrNull().getFieldInstance(classLoader);
-            ArrayList<Method> methods = new ArrayList<>();
-            methods.add(create);
-            methods.add(onResume);
 
-            hookAll(methods, new IHook() {
+            Class<?> preferenceCategoryClass = findClass("miuix.preference.PreferenceCategory").get();
+            Class<?> preferenceClass = findClass("androidx.preference.Preference").get();
+            hook(create, new IHook() {
+                @Override
+                public void after() {
+                    Context context = (Context) callThisMethod("requireContext");
+                    Object preferenceScreen = callThisMethod("getPreferenceScreen");
+                    Object preferenceCategory = newInstance(preferenceCategoryClass, context, null);
+                    callMethod(preferenceCategory, "setTitle", "AutoSEffSwitch");
+                    callMethod(preferenceCategory, "setKey", "auto_effect_switch");
+
+                    mPreference = newInstance(preferenceClass, context, null);
+                    callMethod(mPreference, "setTitle", "基本信息:");
+                    callMethod(mPreference, "setKey", "auto_effect_switch_pref");
+                    updateAutoSEffSwitchInfo();
+
+                    callMethod(preferenceScreen, "addPreference", preferenceCategory);
+                    callMethod(preferenceCategory, "addPreference", mPreference);
+
+                    logI(TAG, "create pref category: " + preferenceCategory);
+
+                    effectSelectionPrefs = getField(thisObject(), effectSelectionField);
+                    updateEarPhoneState();
+                    updateEffectSelectionState();
+                }
+            });
+            hook(onResume, new IHook() {
                 @Override
                 public void after() {
                     effectSelectionPrefs = getField(thisObject(), effectSelectionField);
                     updateEarPhoneState();
                     updateEffectSelectionState();
+                    updateAutoSEffSwitchInfo();
                 }
             });
 
@@ -151,6 +176,7 @@ public class AudioEffectControl implements IControl {
                 @Override
                 public void before() {
                     updateEffectSelectionState();
+                    updateAutoSEffSwitchInfo();
                 }
             });
         } catch (Throwable e) {
@@ -158,9 +184,25 @@ public class AudioEffectControl implements IControl {
         }
     }
 
+    private void updateAutoSEffSwitchInfo() {
+        if (mPreference == null) return;
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("isSupport FW: ").append(isSupportFW()).append("\n");
+        sb.append("isEarPhoneConnection: ").append(isEarPhoneConnection).append("\n");
+        sb.append("\n# Effect Control Info:\n");
+        sb.append("hasControlDolby: ").append(hasControlDolbyEffect()).append("\n");
+        sb.append("hasControlMiSound: ").append(hasControlMiSound()).append("\n");
+        sb.append("\n# Effect Enable Info: \n");
+        sb.append("isEnableDolby: ").append(isEnableDolbyEffect()).append("\n");
+        sb.append("isEnableMiSound: ").append(isEnableMiSound());
+
+        callMethod(mPreference, "setSummary", sb.toString());
+    }
+
     private void updateEffectSelectionState() {
         if (effectSelectionPrefs == null) return;
-        if (isEarPhoneConnection) {
+        if (getEarPhoneState()) {
             callMethod(effectSelectionPrefs, "setEnabled", false);
             logI(TAG, "Disable effect selection: " + effectSelectionPrefs);
         } else
@@ -253,6 +295,8 @@ public class AudioEffectControl implements IControl {
     public void setEffectToNone(Context context) {
         setEnableDolbyEffect(false);
         setEnableMiSound(false);
+
+        updateAutoSEffSwitchInfo();
     }
 
     @Override
@@ -267,6 +311,8 @@ public class AudioEffectControl implements IControl {
             setEnableDolbyEffect(true);
             setEnableMiSound(false);
         }
+
+        updateAutoSEffSwitchInfo();
     }
 
     @Override

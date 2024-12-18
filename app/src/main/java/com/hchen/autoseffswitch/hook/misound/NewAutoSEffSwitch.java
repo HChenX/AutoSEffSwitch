@@ -130,11 +130,11 @@ public class NewAutoSEffSwitch extends BaseHC {
             isBroadcastReceiverCanUse = true;
             String action = intent.getAction();
             if (action != null) {
-                if (!checkIsTargetBluetooth(intent))
-                    return;
-
                 switch (action) {
                     case BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                        if (!checkIsTargetBluetooth(intent))
+                            return;
+
                         logI(TAG, "ACTION_ACL_CONNECTED!");
                         isEarPhoneConnection = true;
                         mControl.updateLastEffectState();
@@ -153,7 +153,10 @@ public class NewAutoSEffSwitch extends BaseHC {
                         if (intent.hasExtra("state")) {
                             int state = intent.getIntExtra("state", 0);
                             if (state == 1) {
-                                logI(TAG, "ACTION_HEADSET_PLUG CONNECTED! " + intent.getPackage());
+                                if (!checkIsTargetBluetooth(intent))
+                                    return;
+
+                                logI(TAG, "ACTION_HEADSET_PLUG CONNECTED! ");
                                 isEarPhoneConnection = true;
                                 mControl.updateLastEffectState();
                                 mControl.setEffectToNone(mContext);
@@ -179,7 +182,18 @@ public class NewAutoSEffSwitch extends BaseHC {
                 device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice.class);
             } else
                 device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-            if (device == null) return false;
+            logI(TAG, "checkIsTargetBluetooth: extra: " + device);
+            if (device == null) {
+                // 检查有线耳机
+                AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
+                for (AudioDeviceInfo info : outputs) {
+                    if (info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
+                        logI(TAG, "checkIsTargetBluetooth: wired headset: true.");
+                        return true;
+                    }
+                }
+                return false;
+            }
 
             @SuppressLint("MissingPermission")
             BluetoothClass bluetoothClass = device.getBluetoothClass();
