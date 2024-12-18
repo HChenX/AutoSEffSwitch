@@ -260,10 +260,8 @@ public class FWAudioEffectControl implements IControl {
         if (mLastEffectStateList.isEmpty()) {
             if (isEffectSupported(EFFECT_DOLBY) && isEffectAvailable(EFFECT_DOLBY)) {
                 setEffectActive(EFFECT_DOLBY, true);
-                logI(TAG,"reset dolby!!");
             } else if (isEffectSupported(EFFECT_MISOUND) && isEffectAvailable(EFFECT_MISOUND)) {
                 setEffectActive(EFFECT_MISOUND, true);
-                logI(TAG,"reset misound!!");
             }
 
             if (isEffectSupported(EFFECT_SPATIAL_AUDIO) && isEffectAvailable(EFFECT_SPATIAL_AUDIO))
