@@ -20,9 +20,11 @@ package com.hchen.autoseffswitch.hook.misound.control;
 
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.TAG;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.getEarPhoneState;
+import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isBroadcastReceiverCanUse;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isEarPhoneConnection;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isSupportFW;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.mDexKit;
+import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.shouldFixXiaoMiShit;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.updateEarPhoneState;
 import static com.hchen.hooktool.BaseHC.classLoader;
 import static com.hchen.hooktool.log.XposedLog.logE;
@@ -50,6 +52,7 @@ import org.luckypray.dexkit.query.matchers.FieldMatcher;
 import org.luckypray.dexkit.query.matchers.MethodMatcher;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +63,7 @@ import java.util.List;
  * @author 焕晨HChen
  */
 public class FWAudioEffectControl implements IControl {
+    private Context mContext;
     public Class<?> mAudioEffectCenter = null;
     public Object mAudioEffectCenterInstance = null;
     private String EFFECT_DOLBY = "";
@@ -120,6 +124,31 @@ public class FWAudioEffectControl implements IControl {
                 }
             });
 
+            Method btChange = mDexKit.findMethod(FindMethod.create()
+                    .matcher(MethodMatcher.create()
+                            .declaredClass(findClass("com.miui.misound.soundid.receiver.BTChangeStaticBroadCastReceiver").get())
+                            .usingStrings("changeCurrentSoundId: to set new gain of ")
+                    )
+            ).singleOrNull().getMethodInstance(classLoader);
+            hook(btChange, new IHook() {
+                        @Override
+                        public void before() {
+                            logI(TAG, "isBroadcastReceiverCanUse: " + isBroadcastReceiverCanUse);
+                            if (isBroadcastReceiverCanUse) return;
+                            Object bluetoothDevice = getArgs(1);
+                            if (bluetoothDevice != null) {
+                                // isEarPhoneConnection = true; // 这里不赋值 true 为了防止音质音效通过 ACTION_HEADSET_PLUG DISCONNECTED! 切换回音效。
+                                shouldFixXiaoMiShit = true;
+                                updateLastEffectState();
+                                setEffectToNone(mContext);
+                            } else {
+                                isEarPhoneConnection = false;
+                                resetAudioEffect();
+                            }
+                        }
+                    }
+            );
+
             Class<?> activityClass = mDexKit.findClass(FindClass.create()
                     .matcher(ClassMatcher.create().usingStrings("refreshOnEffectChangeBroadcast AV Dolby: "))
             ).singleOrNull().getInstance(classLoader);
@@ -137,9 +166,6 @@ public class FWAudioEffectControl implements IControl {
                             .type(findClass("miuix.preference.DropDownPreference").get())
                     )
             ).singleOrNull().getFieldInstance(classLoader);
-            ArrayList<Method> methods = new ArrayList<>();
-            methods.add(refresh);
-            methods.add(onResume);
 
             Class<?> preferenceCategoryClass = findClass("miuix.preference.PreferenceCategory").get();
             Class<?> preferenceClass = findClass("androidx.preference.Preference").get();
@@ -166,7 +192,7 @@ public class FWAudioEffectControl implements IControl {
                     updateEffectSelectionState();
                 }
             });
-            hookAll(methods, new IHook() {
+            hookAll(new Member[]{refresh, onResume}, new IHook() {
                 @Override
                 public void after() {
                     effectSelectionPrefs = getField(thisObject(), prefsField);
@@ -180,6 +206,10 @@ public class FWAudioEffectControl implements IControl {
         }
 
         logI(TAG, "D: " + EFFECT_DOLBY + ", M: " + EFFECT_MISOUND + ", N: " + EFFECT_NONE + ", S: " + EFFECT_SPATIAL_AUDIO + ", SU: " + EFFECT_SURROUND);
+    }
+
+    public void setContext(Context context) {
+        mContext = context;
     }
 
     private void updateAutoSEffSwitchInfo() {
@@ -249,7 +279,8 @@ public class FWAudioEffectControl implements IControl {
     @Override
     public void setEffectToNone(Context context) {
         setEffectActive(EFFECT_NONE, true);
-        Settings.Global.putString(context.getContentResolver(), "effect_implementer", EFFECT_NONE);
+        if (context != null)
+            Settings.Global.putString(context.getContentResolver(), "effect_implementer", EFFECT_NONE);
 
         updateEffectSelectionState();
         updateAutoSEffSwitchInfo();

@@ -20,9 +20,12 @@ package com.hchen.autoseffswitch.hook.misound.control;
 
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.TAG;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.getEarPhoneState;
+import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isBroadcastReceiverCanUse;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isEarPhoneConnection;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isSupportFW;
+import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.mAudioManager;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.mDexKit;
+import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.shouldFixXiaoMiShit;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.updateEarPhoneState;
 import static com.hchen.hooktool.BaseHC.classLoader;
 import static com.hchen.hooktool.log.XposedLog.logE;
@@ -33,11 +36,15 @@ import static com.hchen.hooktool.tool.CoreTool.getField;
 import static com.hchen.hooktool.tool.CoreTool.hook;
 import static com.hchen.hooktool.tool.CoreTool.newInstance;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
+import android.media.Spatializer;
 import android.os.Bundle;
 
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.hooktool.hook.IHook;
+import com.hchen.hooktool.tool.additional.SystemPropTool;
 
 import org.luckypray.dexkit.query.FindClass;
 import org.luckypray.dexkit.query.FindField;
@@ -55,15 +62,20 @@ import java.lang.reflect.Method;
  * @author 焕晨HChen
  */
 public class AudioEffectControl implements IControl {
+    private Context mContext;
     private Class<?> mDolbyEffect;
     private Class<?> mMiSound;
     private Object mDolbyEffectInstance = null;
     private Object mMiSoundInstance = null;
     private boolean mLastDolbyEnabled = false;
     private boolean mLastMiSoundEnabled = false;
+    private boolean mLastSpatializerEnabled = false;
+    private boolean mLast3dSurroundEnabled = false;
+    private boolean isSupport3dSurround = true;
     private Object effectSelectionPrefs;
     private Method mSetEnableMethod = null;
     private Object mPreference;
+    private Spatializer mSpatializer;
 
     public void init() {
         try {
@@ -114,6 +126,31 @@ public class AudioEffectControl implements IControl {
                     }
                 }
             });
+
+            Method btChange = mDexKit.findMethod(FindMethod.create()
+                    .matcher(MethodMatcher.create()
+                            .declaredClass(findClass("com.miui.misound.soundid.receiver.BTChangeStaticBroadCastReceiver").get())
+                            .usingStrings("changeCurrentSoundId: to set new gain of ")
+                    )
+            ).singleOrNull().getMethodInstance(classLoader);
+            hook(btChange, new IHook() {
+                        @Override
+                        public void before() {
+                            logI(TAG, "isBroadcastReceiverCanUse: " + isBroadcastReceiverCanUse);
+                            if (isBroadcastReceiverCanUse) return;
+                            Object bluetoothDevice = getArgs(1);
+                            if (bluetoothDevice != null) {
+                                // isEarPhoneConnection = true; // 这里不赋值 true 为了防止音质音效通过 ACTION_HEADSET_PLUG DISCONNECTED! 切换回音效。
+                                shouldFixXiaoMiShit = true;
+                                updateLastEffectState();
+                                setEffectToNone(mContext);
+                            } else {
+                                isEarPhoneConnection = false;
+                                resetAudioEffect();
+                            }
+                        }
+                    }
+            );
 
             Class<?> activityClass = mDexKit.findClass(FindClass.create()
                     .matcher(ClassMatcher.create().usingStrings("supports spatial audio 3.0 "))
@@ -184,6 +221,14 @@ public class AudioEffectControl implements IControl {
         }
     }
 
+    public void setContext(Context context) {
+        mContext = context;
+    }
+
+    public void setSpatializer(Spatializer spatializer) {
+        mSpatializer = spatializer;
+    }
+
     private void updateAutoSEffSwitchInfo() {
         if (mPreference == null) return;
 
@@ -195,7 +240,9 @@ public class AudioEffectControl implements IControl {
         sb.append("hasControlMiSound: ").append(hasControlMiSound()).append("\n");
         sb.append("\n# Effect Enable Info: \n");
         sb.append("isEnableDolby: ").append(isEnableDolbyEffect()).append("\n");
-        sb.append("isEnableMiSound: ").append(isEnableMiSound());
+        sb.append("isEnableMiSound: ").append(isEnableMiSound()).append("\n");
+        sb.append("isEnableSpatializer: ").append(isEnableSpatializer()).append("\n");
+        sb.append("isEnable3dSurround: ").append(isEnable3dSurround()).append("\n");
 
         callMethod(mPreference, "setSummary", sb.toString());
     }
@@ -282,19 +329,84 @@ public class AudioEffectControl implements IControl {
         return (boolean) callMethod(mMiSoundInstance, "getEnabled");
     }
 
+    private boolean isEnableSpatializer() {
+        if (mSpatializer == null) return false;
+        return mSpatializer.isEnabled();
+    }
+
+    private boolean isAvailableSpatializer() {
+        if (mSpatializer == null) return false;
+        return mSpatializer.isAvailable();
+    }
+
+    @SuppressLint("WrongConstant")
+    private void setEnableSpatializer(boolean enable) {
+        if (mAudioManager == null || mSpatializer == null) return;
+
+        int streamVolume = mAudioManager.getStreamVolume(3);
+        mAudioManager.setStreamVolume(3, 0, 536871424);
+        sleep(150L);
+        try {
+            callMethod(mSpatializer, "setEnabled", enable);
+        } catch (Throwable e) {
+            logE(TAG, e);
+        }
+        sleep(450L);
+        mAudioManager.setStreamVolume(3, streamVolume, 536871424);
+        sleep(150L);
+    }
+
+    private boolean isEnable3dSurround() {
+        return SystemPropTool.getProp("persist.vendor.audio.3dsurround.enable", false);
+    }
+
+    private void setEnable3dSurround(boolean enable) {
+        if (!isSupport3dSurround) return;
+        releaseMiSoundIfNeed();
+
+        if (mMiSoundInstance == null) return;
+        try {
+            callMethod(mMiSoundInstance, "set3dSurround", enable ? 1 : 0);
+        } catch (Throwable e) {
+            logE(TAG, e);
+            isSupport3dSurround = false;
+            return;
+        }
+
+        if (mContext == null) return;
+        Intent intent = new Intent();
+        intent.setAction("com.miui.misound.ACTION_3D_SURROUND_STATE_CHANGED");
+        intent.putExtra("state", enable);
+        mContext.sendBroadcast(intent);
+    }
+
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            logE(TAG, e);
+        }
+    }
+
     @Override
     public void updateLastEffectState() {
         mLastDolbyEnabled = false;
         mLastMiSoundEnabled = false;
+        mLastSpatializerEnabled = false;
+        mLast3dSurroundEnabled = false;
 
         mLastDolbyEnabled = isEnableDolbyEffect();
         mLastMiSoundEnabled = isEnableMiSound();
+        mLastSpatializerEnabled = isEnableSpatializer();
+        mLast3dSurroundEnabled = isEnable3dSurround();
     }
 
     @Override
     public void setEffectToNone(Context context) {
         setEnableDolbyEffect(false);
         setEnableMiSound(false);
+        setEnableSpatializer(false);
+        setEnable3dSurround(false);
 
         updateAutoSEffSwitchInfo();
     }
@@ -308,9 +420,15 @@ public class AudioEffectControl implements IControl {
             setEnableMiSound(true);
             setEnableDolbyEffect(false);
         } else {
+            // 盲猜音质音效被杀，导致数据丢失。
             setEnableDolbyEffect(true);
             setEnableMiSound(false);
+
+            mLast3dSurroundEnabled = true;
+            mLastSpatializerEnabled = (isAvailableSpatializer() && !isEnableSpatializer());
         }
+        setEnableSpatializer(mLastSpatializerEnabled);
+        setEnable3dSurround(mLast3dSurroundEnabled);
 
         updateAutoSEffSwitchInfo();
     }
