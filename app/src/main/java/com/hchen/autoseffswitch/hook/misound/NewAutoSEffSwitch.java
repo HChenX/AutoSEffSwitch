@@ -77,7 +77,8 @@ public class NewAutoSEffSwitch extends BaseHC {
     }
 
     public static boolean isSupportFW() {
-        return SystemPropTool.getProp("ro.vendor.audio.fweffect", false);
+        // 部分机型 OS2 没有对应 Prop 但是使用 AudioEffectCenter
+        return SystemPropTool.getProp("ro.vendor.audio.fweffect", false) || existsClass("android.media.audiofx.AudioEffectCenter");
     }
 
     @Override
