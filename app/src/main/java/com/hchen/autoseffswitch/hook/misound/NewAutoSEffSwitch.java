@@ -228,7 +228,7 @@ public class NewAutoSEffSwitch extends BaseHC {
 
         private void dump() {
             if (mDumpHandler.hasMessages(DUMP))
-                mDumpHandler.removeMessages(0);
+                mDumpHandler.removeMessages(DUMP);
             mDumpHandler.sendEmptyMessageDelayed(DUMP, 1000);
         }
     }
