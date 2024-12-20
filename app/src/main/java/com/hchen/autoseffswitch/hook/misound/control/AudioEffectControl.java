@@ -42,6 +42,7 @@ import android.content.Intent;
 import android.media.Spatializer;
 import android.os.Bundle;
 
+import com.hchen.autoseffswitch.hook.misound.backups.BackupsUtils;
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.hooktool.hook.IHook;
 import com.hchen.hooktool.tool.additional.SystemPropTool;
@@ -63,6 +64,7 @@ import java.lang.reflect.Method;
  */
 public class AudioEffectControl implements IControl {
     private Context mContext;
+    private BackupsUtils mBackupsUtils;
     private Class<?> mDolbyEffect;
     private Class<?> mMiSound;
     private Object mDolbyEffectInstance = null;
@@ -227,6 +229,10 @@ public class AudioEffectControl implements IControl {
 
     public void setSpatializer(Spatializer spatializer) {
         mSpatializer = spatializer;
+    }
+
+    public void setBackups(BackupsUtils backupsUtils) {
+        mBackupsUtils = backupsUtils;
     }
 
     private void updateAutoSEffSwitchInfo() {
@@ -399,6 +405,11 @@ public class AudioEffectControl implements IControl {
         mLastMiSoundEnabled = isEnableMiSound();
         mLastSpatializerEnabled = isEnableSpatializer();
         mLast3dSurroundEnabled = isEnable3dSurround();
+
+        mBackupsUtils.saveDolbyState(mLastDolbyEnabled);
+        mBackupsUtils.saveMiSoundState(mLastMiSoundEnabled);
+        mBackupsUtils.saveSpatializerState(mLastSpatializerEnabled);
+        mBackupsUtils.save3dSurroundState(mLast3dSurroundEnabled);
     }
 
     @Override
@@ -413,6 +424,11 @@ public class AudioEffectControl implements IControl {
 
     @Override
     public void resetAudioEffect() {
+        mLastDolbyEnabled = mBackupsUtils.getDolbyState();
+        mLastMiSoundEnabled = mBackupsUtils.getMiSoundState();
+        mLastSpatializerEnabled = mBackupsUtils.getSpatializerState();
+        mLast3dSurroundEnabled = mBackupsUtils.get3dSurroundState();
+
         if (mLastDolbyEnabled) {
             setEnableMiSound(false);
             setEnableDolbyEffect(true);
@@ -431,6 +447,7 @@ public class AudioEffectControl implements IControl {
         setEnable3dSurround(mLast3dSurroundEnabled);
 
         updateAutoSEffSwitchInfo();
+        mBackupsUtils.clearAll();
     }
 
     @Override

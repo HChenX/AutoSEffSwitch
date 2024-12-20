@@ -41,6 +41,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.provider.Settings;
 
+import com.hchen.autoseffswitch.hook.misound.backups.BackupsUtils;
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.hooktool.hook.IHook;
 
@@ -56,6 +57,7 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 /**
  * 较新版本的切换逻辑
@@ -64,6 +66,7 @@ import java.util.List;
  */
 public class FWAudioEffectControl implements IControl {
     private Context mContext;
+    private BackupsUtils mBackupsUtils;
     public Class<?> mAudioEffectCenter = null;
     public Object mAudioEffectCenterInstance = null;
     private String EFFECT_DOLBY = "";
@@ -212,6 +215,10 @@ public class FWAudioEffectControl implements IControl {
         mContext = context;
     }
 
+    public void setBackups(BackupsUtils backupsUtils) {
+        mBackupsUtils = backupsUtils;
+    }
+
     private void updateAutoSEffSwitchInfo() {
         if (mPreference == null) return;
 
@@ -271,8 +278,10 @@ public class FWAudioEffectControl implements IControl {
         if (mEffectList.isEmpty()) return;
         mLastEffectStateList.clear();
         mEffectList.forEach(s -> {
-            if (isEffectActive(s))
+            if (isEffectActive(s)) {
                 mLastEffectStateList.add(s);
+                mBackupsUtils.saveAnyState(s, true);
+            }
         });
     }
 
@@ -288,6 +297,13 @@ public class FWAudioEffectControl implements IControl {
 
     @Override
     public void resetAudioEffect() {
+        if (mLastEffectStateList.isEmpty()) {
+            mBackupsUtils.getAllState().forEach((BiConsumer<String, Object>) (s, object) -> {
+                if (mEffectList.contains(s) && object instanceof Boolean b && b)
+                    mLastEffectStateList.add(s);
+            });
+        }
+
         if (mLastEffectStateList.isEmpty()) {
             if (isEffectSupported(EFFECT_DOLBY) && isEffectAvailable(EFFECT_DOLBY)) {
                 setEffectActive(EFFECT_DOLBY, true);
@@ -305,6 +321,7 @@ public class FWAudioEffectControl implements IControl {
 
         updateEffectSelectionState();
         updateAutoSEffSwitchInfo();
+        mBackupsUtils.clearAll();
     }
 
     @Override

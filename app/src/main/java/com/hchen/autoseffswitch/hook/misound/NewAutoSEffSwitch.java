@@ -35,6 +35,7 @@ import android.os.Message;
 
 import androidx.annotation.NonNull;
 
+import com.hchen.autoseffswitch.hook.misound.backups.BackupsUtils;
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.autoseffswitch.hook.misound.control.AudioEffectControl;
 import com.hchen.autoseffswitch.hook.misound.control.FWAudioEffectControl;
@@ -54,6 +55,7 @@ public class NewAutoSEffSwitch extends BaseHC {
     private Context mContext;
     public static DexKitBridge mDexKit;
     public static boolean isEarPhoneConnection = false;
+    public static boolean isWiredHeadsetConnection = false;
     public static boolean isBroadcastReceiverCanUse = false;
     public static boolean shouldFixXiaoMiShit = false;
     public static AudioManager mAudioManager;
@@ -83,6 +85,7 @@ public class NewAutoSEffSwitch extends BaseHC {
     @Override
     protected void onApplicationAfter(Context context) {
         mContext = context;
+        BackupsUtils backupsUtils = new BackupsUtils(mContext);
         if (mFWAudioEffectControl != null && mFWAudioEffectControl.mAudioEffectCenter != null) {
             mFWAudioEffectControl.mAudioEffectCenterInstance = callStaticMethod(mFWAudioEffectControl.mAudioEffectCenter, "getInstance", mContext);
             logI(TAG, "mAudioEffectCenterInstance: " + mFWAudioEffectControl.mAudioEffectCenterInstance);
@@ -98,10 +101,14 @@ public class NewAutoSEffSwitch extends BaseHC {
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         if (mAudioEffectControl != null) {
             mAudioEffectControl.setContext(mContext);
+            mAudioEffectControl.setBackups(backupsUtils);
             mAudioEffectControl.setSpatializer(mAudioManager.getSpatializer());
-        } else if (mFWAudioEffectControl != null)
+        } else if (mFWAudioEffectControl != null) {
             mFWAudioEffectControl.setContext(mContext);
+            mFWAudioEffectControl.setBackups(backupsUtils);
+        }
 
+        isWiredHeadsetConnection = checkIsWiredHeadset();
         updateEarPhoneState();
     }
 
@@ -127,6 +134,19 @@ public class NewAutoSEffSwitch extends BaseHC {
         }
 
         logI(TAG, "getEarPhoneState: isEarPhoneConnection: false.");
+        return false;
+    }
+
+    private boolean checkIsWiredHeadset() {
+        // 检查有线耳机
+        AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
+        for (AudioDeviceInfo info : outputs) {
+            if (info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
+                logI(TAG, "checkIsTargetBluetooth: wired headset: true.");
+                return true;
+            }
+        }
+        logI(TAG, "checkIsTargetBluetooth: wired headset: false.");
         return false;
     }
 
@@ -174,6 +194,8 @@ public class NewAutoSEffSwitch extends BaseHC {
                                     return;
                                 }
                                 if (!isEarPhoneConnection) return; // 没连接过关什么？
+                                if (!isWiredHeadsetConnection) return; // 没连接有线耳机关什么？
+                                isWiredHeadsetConnection = false;
 
                                 logI(TAG, "ACTION_HEADSET_PLUG DISCONNECTED!");
                                 isEarPhoneConnection = false;
@@ -191,15 +213,7 @@ public class NewAutoSEffSwitch extends BaseHC {
             BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice.class);
             logI(TAG, "checkIsTargetBluetooth: extra: " + device);
             if (device == null) {
-                // 检查有线耳机
-                AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
-                for (AudioDeviceInfo info : outputs) {
-                    if (info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
-                        logI(TAG, "checkIsTargetBluetooth: wired headset: true.");
-                        return true;
-                    }
-                }
-                return false;
+                return checkIsWiredHeadset();
             }
 
             @SuppressLint("MissingPermission")
