@@ -20,8 +20,6 @@ package com.hchen.autoseffswitch.hook.misound;
 
 import static com.hchen.hooktool.log.XposedLog.logI;
 
-import android.annotation.SuppressLint;
-import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -39,7 +37,6 @@ import com.hchen.autoseffswitch.hook.misound.backups.BackupsUtils;
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.autoseffswitch.hook.misound.control.AudioEffectControl;
 import com.hchen.autoseffswitch.hook.misound.control.FWAudioEffectControl;
-import com.hchen.autoseffswitch.hook.misound.helper.BluetoothClassHelper;
 import com.hchen.hooktool.BaseHC;
 import com.hchen.hooktool.tool.additional.SystemPropTool;
 
@@ -142,11 +139,11 @@ public class NewAutoSEffSwitch extends BaseHC {
         AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
         for (AudioDeviceInfo info : outputs) {
             if (info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
-                logI(TAG, "checkIsTargetBluetooth: wired headset: true.");
+                logI(TAG, "checkIsWiredHeadset: wired headset: true.");
                 return true;
             }
         }
-        logI(TAG, "checkIsTargetBluetooth: wired headset: false.");
+        logI(TAG, "checkIsWiredHeadset: wired headset: false.");
         return false;
     }
 
@@ -216,12 +213,19 @@ public class NewAutoSEffSwitch extends BaseHC {
                 return checkIsWiredHeadset();
             }
 
-            @SuppressLint("MissingPermission")
-            BluetoothClass bluetoothClass = device.getBluetoothClass();
-            if (bluetoothClass == null) return false;
+            boolean result = false;
+            long time = System.currentTimeMillis();
+            long timeout = 2000; // 2秒
+            while (true) {
+                try {
+                    Thread.sleep(200L);
+                } catch (InterruptedException e) {
+                }
+                long nowTime = System.currentTimeMillis();
+                result = getEarPhoneState();
+                if (result || (nowTime - time > timeout)) break;
+            }
 
-            boolean result = BluetoothClassHelper.doesClassMatch(bluetoothClass, BluetoothClassHelper.PROFILE_A2DP) ||
-                    BluetoothClassHelper.doesClassMatch(bluetoothClass, BluetoothClassHelper.PROFILE_HEADSET);
             logI(TAG, "checkIsTargetBluetooth: " + result);
             return result;
         }
