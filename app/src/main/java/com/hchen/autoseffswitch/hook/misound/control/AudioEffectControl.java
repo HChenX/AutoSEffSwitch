@@ -42,6 +42,8 @@ import android.content.Intent;
 import android.media.Spatializer;
 import android.os.Bundle;
 
+import androidx.annotation.Nullable;
+
 import com.hchen.autoseffswitch.hook.misound.backups.BackupsUtils;
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.hooktool.hook.IHook;
@@ -64,6 +66,7 @@ import java.lang.reflect.Method;
  */
 public class AudioEffectControl implements IControl {
     private Context mContext;
+    @Nullable
     private BackupsUtils mBackupsUtils;
     private Class<?> mDolbyEffect;
     private Class<?> mMiSound;
@@ -406,10 +409,12 @@ public class AudioEffectControl implements IControl {
         mLastSpatializerEnabled = isEnableSpatializer();
         mLast3dSurroundEnabled = isEnable3dSurround();
 
-        mBackupsUtils.saveDolbyState(mLastDolbyEnabled);
-        mBackupsUtils.saveMiSoundState(mLastMiSoundEnabled);
-        mBackupsUtils.saveSpatializerState(mLastSpatializerEnabled);
-        mBackupsUtils.save3dSurroundState(mLast3dSurroundEnabled);
+        if (mBackupsUtils != null && mBackupsUtils.supportBackups()) {
+            mBackupsUtils.saveDolbyState(mLastDolbyEnabled);
+            mBackupsUtils.saveMiSoundState(mLastMiSoundEnabled);
+            mBackupsUtils.saveSpatializerState(mLastSpatializerEnabled);
+            mBackupsUtils.save3dSurroundState(mLast3dSurroundEnabled);
+        }
     }
 
     @Override
@@ -424,10 +429,12 @@ public class AudioEffectControl implements IControl {
 
     @Override
     public void resetAudioEffect() {
-        mLastDolbyEnabled = mBackupsUtils.getDolbyState();
-        mLastMiSoundEnabled = mBackupsUtils.getMiSoundState();
-        mLastSpatializerEnabled = mBackupsUtils.getSpatializerState();
-        mLast3dSurroundEnabled = mBackupsUtils.get3dSurroundState();
+        if (mBackupsUtils != null && mBackupsUtils.supportBackups()) {
+            mLastDolbyEnabled = mBackupsUtils.getDolbyState();
+            mLastMiSoundEnabled = mBackupsUtils.getMiSoundState();
+            mLastSpatializerEnabled = mBackupsUtils.getSpatializerState();
+            mLast3dSurroundEnabled = mBackupsUtils.get3dSurroundState();
+        }
 
         if (mLastDolbyEnabled) {
             setEnableMiSound(false);
@@ -447,7 +454,8 @@ public class AudioEffectControl implements IControl {
         setEnable3dSurround(mLast3dSurroundEnabled);
 
         updateAutoSEffSwitchInfo();
-        mBackupsUtils.clearAll();
+        if (mBackupsUtils != null && mBackupsUtils.supportBackups())
+            mBackupsUtils.clearAll();
     }
 
     @Override

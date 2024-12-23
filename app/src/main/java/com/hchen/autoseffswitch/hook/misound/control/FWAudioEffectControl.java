@@ -41,6 +41,8 @@ import android.content.Context;
 import android.os.Bundle;
 import android.provider.Settings;
 
+import androidx.annotation.Nullable;
+
 import com.hchen.autoseffswitch.hook.misound.backups.BackupsUtils;
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.hooktool.hook.IHook;
@@ -66,6 +68,7 @@ import java.util.function.BiConsumer;
  */
 public class FWAudioEffectControl implements IControl {
     private Context mContext;
+    @Nullable
     private BackupsUtils mBackupsUtils;
     public Class<?> mAudioEffectCenter = null;
     public Object mAudioEffectCenterInstance = null;
@@ -280,7 +283,8 @@ public class FWAudioEffectControl implements IControl {
         mEffectList.forEach(s -> {
             if (isEffectActive(s)) {
                 mLastEffectStateList.add(s);
-                mBackupsUtils.saveAnyState(s, true);
+                if (mBackupsUtils != null && mBackupsUtils.supportBackups())
+                    mBackupsUtils.saveAnyState(s, true);
             }
         });
     }
@@ -298,10 +302,11 @@ public class FWAudioEffectControl implements IControl {
     @Override
     public void resetAudioEffect() {
         if (mLastEffectStateList.isEmpty()) {
-            mBackupsUtils.getAllState().forEach((BiConsumer<String, Object>) (s, object) -> {
-                if (mEffectList.contains(s) && object instanceof Boolean b && b)
-                    mLastEffectStateList.add(s);
-            });
+            if (mBackupsUtils != null && mBackupsUtils.supportBackups())
+                mBackupsUtils.getAllState().forEach((BiConsumer<String, Object>) (s, object) -> {
+                    if (mEffectList.contains(s) && object instanceof Boolean b && b)
+                        mLastEffectStateList.add(s);
+                });
         }
 
         if (mLastEffectStateList.isEmpty()) {
@@ -321,7 +326,8 @@ public class FWAudioEffectControl implements IControl {
 
         updateEffectSelectionState();
         updateAutoSEffSwitchInfo();
-        mBackupsUtils.clearAll();
+        if (mBackupsUtils != null && mBackupsUtils.supportBackups())
+            mBackupsUtils.clearAll();
     }
 
     @Override

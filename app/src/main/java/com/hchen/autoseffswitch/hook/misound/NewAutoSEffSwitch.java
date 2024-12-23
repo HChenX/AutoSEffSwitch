@@ -30,6 +30,7 @@ import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.UserManager;
 
 import androidx.annotation.NonNull;
 
@@ -82,7 +83,6 @@ public class NewAutoSEffSwitch extends BaseHC {
     @Override
     protected void onApplicationAfter(Context context) {
         mContext = context;
-        BackupsUtils backupsUtils = new BackupsUtils(mContext);
         if (mFWAudioEffectControl != null && mFWAudioEffectControl.mAudioEffectCenter != null) {
             mFWAudioEffectControl.mAudioEffectCenterInstance = callStaticMethod(mFWAudioEffectControl.mAudioEffectCenter, "getInstance", mContext);
             logI(TAG, "mAudioEffectCenterInstance: " + mFWAudioEffectControl.mAudioEffectCenterInstance);
@@ -94,6 +94,25 @@ public class NewAutoSEffSwitch extends BaseHC {
         intentFilter.addAction(AudioManager.ACTION_HEADSET_PLUG);
         mContext.registerReceiver(new AudioManagerListener(), intentFilter);
         mDumpHandler = new DumpHandler(mContext.getMainLooper());
+
+        BackupsUtils backupsUtils = null;
+        UserManager userManager = (UserManager) context.getSystemService(Context.USER_SERVICE);
+        if (!userManager.isUserUnlocked()) {
+            mContext.registerReceiver(new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (Intent.ACTION_USER_UNLOCKED.equals(intent.getAction())) {
+                        context.unregisterReceiver(this);
+                        if (mAudioEffectControl != null)
+                            mAudioEffectControl.setBackups(new BackupsUtils(context));
+                        else if (mFWAudioEffectControl != null)
+                            mFWAudioEffectControl.setBackups(new BackupsUtils(context));
+                    }
+                }
+            }, new IntentFilter(Intent.ACTION_USER_UNLOCKED));
+        } else {
+            backupsUtils = new BackupsUtils(mContext);
+        }
 
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         if (mAudioEffectControl != null) {

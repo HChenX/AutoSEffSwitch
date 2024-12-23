@@ -35,6 +35,7 @@ public class BackupsUtils {
 
     public BackupsUtils(Context context) {
         iPrefsApply = PrefsTool.prefs(context, "effect_state_backups");
+        iPrefsApply.editor().putBoolean("support_backups", true).apply();
     }
 
     public void saveDolbyState(boolean enable) {
@@ -79,5 +80,9 @@ public class BackupsUtils {
 
     public void clearAll() {
         iPrefsApply.editor().clear().apply();
+    }
+
+    public boolean supportBackups() {
+        return iPrefsApply != null && iPrefsApply.getBoolean("support_backups", false);
     }
 }
