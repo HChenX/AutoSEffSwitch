@@ -76,7 +76,7 @@ public class NewAutoSEffSwitch extends BaseHC {
     }
 
     public static boolean isSupportFW() {
-        return true;
+        return SystemPropTool.getProp("ro.vendor.audio.fweffect", false);
     }
 
     @Override
