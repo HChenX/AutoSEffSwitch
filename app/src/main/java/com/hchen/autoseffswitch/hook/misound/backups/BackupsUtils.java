@@ -83,7 +83,9 @@ public class BackupsUtils {
     }
 
     public void clearAll() {
+        boolean isSupportBackups = iPrefsApply.getBoolean("support_backups", false);
         iPrefsApply.editor().clear().apply();
+        iPrefsApply.editor().putBoolean("support_backups", isSupportBackups).apply();
     }
 
     public boolean supportBackups() {
