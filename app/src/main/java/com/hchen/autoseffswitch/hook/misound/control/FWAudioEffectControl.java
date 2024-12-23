@@ -140,12 +140,13 @@ public class FWAudioEffectControl implements IControl {
                             if (isBroadcastReceiverCanUse) return;
                             Object bluetoothDevice = getArgs(1);
                             if (bluetoothDevice != null) {
-                                // isEarPhoneConnection = true; // 这里不赋值 true 为了防止音质音效通过 ACTION_HEADSET_PLUG DISCONNECTED! 切换回音效。
+                                isEarPhoneConnection = true;
                                 shouldFixXiaoMiShit = true;
                                 updateLastEffectState();
                                 setEffectToNone(mContext);
                             } else {
                                 isEarPhoneConnection = false;
+                                shouldFixXiaoMiShit = true;
                                 resetAudioEffect();
                             }
                         }
