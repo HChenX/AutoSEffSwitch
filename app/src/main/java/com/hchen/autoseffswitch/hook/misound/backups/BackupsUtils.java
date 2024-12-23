@@ -31,11 +31,15 @@ import java.util.Map;
  * @author 焕晨HChen
  * */
 public class BackupsUtils {
-    private final IPrefsApply iPrefsApply;
+    private IPrefsApply iPrefsApply;
 
     public BackupsUtils(Context context) {
-        iPrefsApply = PrefsTool.prefs(context, "effect_state_backups");
-        iPrefsApply.editor().putBoolean("support_backups", true).apply();
+        try {
+            iPrefsApply = PrefsTool.prefs(context, "effect_state_backups");
+            iPrefsApply.editor().putBoolean("support_backups", true).apply();
+        } catch (Throwable e) {
+            iPrefsApply = null;
+        }
     }
 
     public void saveDolbyState(boolean enable) {
