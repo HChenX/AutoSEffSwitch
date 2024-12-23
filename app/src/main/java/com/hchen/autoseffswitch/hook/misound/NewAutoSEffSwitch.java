@@ -53,7 +53,6 @@ public class NewAutoSEffSwitch extends BaseHC {
     private Context mContext;
     public static DexKitBridge mDexKit;
     public static boolean isEarPhoneConnection = false;
-    public static boolean isWiredHeadsetConnection = false;
     public static boolean isBroadcastReceiverCanUse = false;
     public static boolean shouldFixXiaoMiShit = false;
     public static AudioManager mAudioManager;
@@ -77,7 +76,7 @@ public class NewAutoSEffSwitch extends BaseHC {
     }
 
     public static boolean isSupportFW() {
-        return SystemPropTool.getProp("ro.vendor.audio.fweffect", false);
+        return true;
     }
 
     @Override
@@ -124,7 +123,6 @@ public class NewAutoSEffSwitch extends BaseHC {
             mFWAudioEffectControl.setBackups(backupsUtils);
         }
 
-        isWiredHeadsetConnection = checkIsWiredHeadset();
         updateEarPhoneState();
     }
 
@@ -143,7 +141,10 @@ public class NewAutoSEffSwitch extends BaseHC {
 
         AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
         for (AudioDeviceInfo info : outputs) {
-            if (info.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
+            if (info.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                    info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                    info.getType() == AudioDeviceInfo.TYPE_USB_HEADSET) {
                 logI(TAG, "getEarPhoneState: isEarPhoneConnection: true.");
                 return true;
             }
@@ -157,9 +158,19 @@ public class NewAutoSEffSwitch extends BaseHC {
         // 检查有线耳机
         AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
         for (AudioDeviceInfo info : outputs) {
-            if (info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
-                logI(TAG, "checkIsWiredHeadset: wired headset: true.");
-                return true;
+            switch (info.getType()) {
+                case AudioDeviceInfo.TYPE_WIRED_HEADSET -> {
+                    logI(TAG, "checkIsWiredHeadset: wired headset: true.");
+                    return true;
+                }
+                case AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> {
+                    logI(TAG, "checkIsWiredHeadset: wired headphones: true.");
+                    return true;
+                }
+                case AudioDeviceInfo.TYPE_USB_HEADSET -> {
+                    logI(TAG, "checkIsWiredHeadset: usb headset: true.");
+                    return true;
+                }
             }
         }
         logI(TAG, "checkIsWiredHeadset: wired headset: false.");
@@ -205,13 +216,9 @@ public class NewAutoSEffSwitch extends BaseHC {
                                 dump();
                             } else if (state == 0) {
                                 if (shouldFixXiaoMiShit) {
-                                    isEarPhoneConnection = true;
                                     shouldFixXiaoMiShit = false;
                                     return;
                                 }
-                                if (!isEarPhoneConnection) return; // 没连接过关什么？
-                                if (!isWiredHeadsetConnection) return; // 没连接有线耳机关什么？
-                                isWiredHeadsetConnection = false;
 
                                 logI(TAG, "ACTION_HEADSET_PLUG DISCONNECTED!");
                                 isEarPhoneConnection = false;

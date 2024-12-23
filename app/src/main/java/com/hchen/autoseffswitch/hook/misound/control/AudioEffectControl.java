@@ -145,12 +145,13 @@ public class AudioEffectControl implements IControl {
                             if (isBroadcastReceiverCanUse) return;
                             Object bluetoothDevice = getArgs(1);
                             if (bluetoothDevice != null) {
-                                // isEarPhoneConnection = true; // 这里不赋值 true 为了防止音质音效通过 ACTION_HEADSET_PLUG DISCONNECTED! 切换回音效。
+                                isEarPhoneConnection = true;
                                 shouldFixXiaoMiShit = true;
                                 updateLastEffectState();
                                 setEffectToNone(mContext);
                             } else {
                                 isEarPhoneConnection = false;
+                                shouldFixXiaoMiShit = true;
                                 resetAudioEffect();
                             }
                         }
@@ -436,22 +437,12 @@ public class AudioEffectControl implements IControl {
             mLast3dSurroundEnabled = mBackupsUtils.get3dSurroundState();
         }
 
-        if (mLastDolbyEnabled) {
-            setEnableMiSound(false);
-            setEnableDolbyEffect(true);
-        } else if (mLastMiSoundEnabled) {
-            setEnableMiSound(true);
-            setEnableDolbyEffect(false);
-        } else {
-            // 盲猜音质音效被杀，导致数据丢失。
-            setEnableDolbyEffect(true);
-            setEnableMiSound(false);
-
-            mLast3dSurroundEnabled = true;
-            mLastSpatializerEnabled = (isAvailableSpatializer() && !isEnableSpatializer());
+        if (mLastDolbyEnabled || mLastMiSoundEnabled) {
+            setEnableDolbyEffect(mLastDolbyEnabled);
+            setEnableMiSound(mLastMiSoundEnabled);
+            setEnableSpatializer(mLastSpatializerEnabled);
+            setEnable3dSurround(mLast3dSurroundEnabled);
         }
-        setEnableSpatializer(mLastSpatializerEnabled);
-        setEnable3dSurround(mLast3dSurroundEnabled);
 
         updateAutoSEffSwitchInfo();
         if (mBackupsUtils != null && mBackupsUtils.supportBackups())
