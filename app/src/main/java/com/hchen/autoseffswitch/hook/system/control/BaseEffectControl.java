@@ -33,6 +33,7 @@ public class BaseEffectControl {
     final HashMap<String, String> mEffectAvailableMap = new HashMap<>();
     final HashMap<String, String> mEffectActiveMap = new HashMap<>();
     final HashMap<String, String> mEffectEnabledMap = new HashMap<>();
+    final HashMap<String, String> mEffectHasControlMap = new HashMap<>();
 
     void updateEffectMap() {
     }
@@ -55,5 +56,10 @@ public class BaseEffectControl {
     public Map<String, String> getEffectEnabledMap() throws RemoteException {
         updateEffectMap();
         return mEffectEnabledMap;
+    }
+
+    public Map<String, String> getEffectHasControlMap() throws RemoteException {
+        updateEffectMap();
+        return mEffectHasControlMap;
     }
 }

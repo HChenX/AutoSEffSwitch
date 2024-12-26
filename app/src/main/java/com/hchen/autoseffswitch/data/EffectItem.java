@@ -25,7 +25,9 @@ package com.hchen.autoseffswitch.data;
  */
 public class EffectItem {
     public static final String EFFECT_DOLBY = "dolby";
+    public static final String EFFECT_DOLBY_CONTROL = "dolby_control";
     public static final String EFFECT_MISOUND = "misound";
+    public static final String EFFECT_MISOUND_CONTROL = "misound_control";
     public static final String EFFECT_NONE = "none";
     public static final String EFFECT_SPATIAL_AUDIO = "spatial";
     public static final String EFFECT_SURROUND = "surround";

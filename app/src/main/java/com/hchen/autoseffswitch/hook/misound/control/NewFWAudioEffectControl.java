@@ -1,8 +1,6 @@
 package com.hchen.autoseffswitch.hook.misound.control;
 
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.TAG;
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.getEarPhoneState;
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isEarPhoneConnection;
+import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.getEarPhoneStateFinal;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isSupportFW;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.mDexKit;
 import static com.hchen.hooktool.BaseHC.classLoader;
@@ -19,7 +17,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.os.RemoteException;
 
-import com.hchen.autoseffswitch.hook.system.binder.EffectInfoService;
+import com.hchen.autoseffswitch.IEffectInfo;
 import com.hchen.hooktool.hook.IHook;
 
 import org.luckypray.dexkit.query.FindClass;
@@ -35,9 +33,10 @@ import java.lang.reflect.Method;
 import java.util.Map;
 
 public class NewFWAudioEffectControl {
+    public static final String TAG = "NewFWAudioEffectControl";
     private Object mEffectSelectionPrefs;
     private Object mPreference;
-    public EffectInfoService mEffectInfoService;
+    public IEffectInfo mIEffectInfo;
 
     public void init() {
         try {
@@ -50,7 +49,7 @@ public class NewFWAudioEffectControl {
             hook(audioEffectCenterEnable, new IHook() {
                 @Override
                 public void before() {
-                    if (getEarPhoneState()) {
+                    if (getEarPhoneStateFinal()) {
                         returnNull();
                         logI(TAG, "Dont set dolby or misound, in earphone mode!!");
                     }
@@ -66,7 +65,7 @@ public class NewFWAudioEffectControl {
             hook(click, new IHook() {
                 @Override
                 public void before() {
-                    if (getEarPhoneState())
+                    if (getEarPhoneStateFinal())
                         returnFalse();
                 }
             });
@@ -126,16 +125,25 @@ public class NewFWAudioEffectControl {
         }
     }
 
+    public void updateEffectSelectionState() {
+        if (mEffectSelectionPrefs == null) return;
+        if (getEarPhoneStateFinal()) {
+            callMethod(mEffectSelectionPrefs, "setEnabled", false);
+            logI(TAG, "Disable effect selection: " + mEffectSelectionPrefs);
+        } else
+            callMethod(mEffectSelectionPrefs, "setEnabled", true);
+    }
+
     private void updateAutoSEffSwitchInfo() {
         if (mPreference == null) return;
 
         StringBuilder sb = new StringBuilder();
         sb.append("isSupport FW: ").append(isSupportFW()).append("\n");
-        sb.append("isEarPhoneConnection: ").append(isEarPhoneConnection).append("\n");
+        sb.append("isEarPhoneConnection: ").append(getEarPhoneStateFinal()).append("\n");
 
-        if (mEffectInfoService != null) {
+        if (mIEffectInfo != null) {
             try {
-                Map<String, String> map = mEffectInfoService.getEffectSupportMap();
+                Map<String, String> map = mIEffectInfo.getEffectSupportMap();
                 sb.append("\n# Effect Support Info:\n");
                 map.forEach((s, s2) -> sb.append("isSupport").append(s.substring(0, 1).toUpperCase())
                         .append(s.substring(1).toLowerCase())
@@ -145,7 +153,7 @@ public class NewFWAudioEffectControl {
             }
 
             try {
-                Map<String, String> map = mEffectInfoService.getEffectAvailableMap();
+                Map<String, String> map = mIEffectInfo.getEffectAvailableMap();
                 sb.append("\n# Effect Available Info:\n");
                 map.forEach((s, s2) -> sb.append("isAvailable").append(s.substring(0, 1).toUpperCase())
                         .append(s.substring(1).toLowerCase())
@@ -155,7 +163,8 @@ public class NewFWAudioEffectControl {
             }
 
             try {
-                Map<String, String> map = mEffectInfoService.getEffectActiveMap();
+                Map<String, String> map = mIEffectInfo.getEffectActiveMap();
+                logI(TAG, "Effect Active Info: " + map);
                 sb.append("\n# Effect Active Info:\n");
                 map.forEach((s, s2) -> sb.append("isActive").append(s.substring(0, 1).toUpperCase())
                         .append(s.substring(1).toLowerCase())
@@ -166,14 +175,5 @@ public class NewFWAudioEffectControl {
         }
 
         callMethod(mPreference, "setSummary", sb.toString());
-    }
-
-    private void updateEffectSelectionState() {
-        if (mEffectSelectionPrefs == null) return;
-        if (getEarPhoneState()) {
-            callMethod(mEffectSelectionPrefs, "setEnabled", false);
-            logI(TAG, "Disable effect selection: " + mEffectSelectionPrefs);
-        } else
-            callMethod(mEffectSelectionPrefs, "setEnabled", true);
     }
 }

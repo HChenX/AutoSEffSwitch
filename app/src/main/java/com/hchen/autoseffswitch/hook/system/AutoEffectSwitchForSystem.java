@@ -19,6 +19,7 @@
 package com.hchen.autoseffswitch.hook.system;
 
 import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.EarphoneBroadcastReceiver.DUMP;
+import static com.hchen.hooktool.log.XposedLog.logI;
 
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -26,6 +27,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.ContentObserver;
+import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
@@ -34,8 +36,8 @@ import android.provider.Settings;
 
 import androidx.annotation.NonNull;
 
-import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.autoseffswitch.hook.system.binder.EffectInfoService;
+import com.hchen.autoseffswitch.hook.system.callback.IControl;
 import com.hchen.autoseffswitch.hook.system.control.AudioEffectControlForSystem;
 import com.hchen.autoseffswitch.hook.system.control.FWAudioEffectControlForSystem;
 import com.hchen.hooktool.BaseHC;
@@ -48,8 +50,9 @@ import com.hchen.hooktool.tool.additional.SystemPropTool;
  * @author 焕晨HChen
  */
 public class AutoEffectSwitchForSystem extends BaseHC {
-    public static final String TAG = "AutoSEffSwitch";
+    public static final String TAG = "AutoEffectSwitchForSystem";
     public Context mContext;
+    private static AudioManager mAudioManager = null;
     public static EffectInfoService mEffectInfoService = null;
     private AudioEffectControlForSystem mAudioEffectControlForSystem = null;
     private FWAudioEffectControlForSystem mFWAudioEffectControlForSystem = null;
@@ -82,11 +85,12 @@ public class AutoEffectSwitchForSystem extends BaseHC {
                             else if (mAudioEffectControlForSystem != null)
                                 mEffectInfoService = new EffectInfoService(mAudioEffectControlForSystem);
                         }
+
+                        mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
                         registerEarphoneReceiver();
                         registerDebug();
-
-                        if (mAudioEffectControlForSystem == null) return;
-                        mAudioEffectControlForSystem.setContext(mContext);
+                        reportEarphoneState();
+                        logI(TAG, "system ready!!");
                     }
                 }
         );
@@ -94,6 +98,21 @@ public class AutoEffectSwitchForSystem extends BaseHC {
 
     private boolean isSupportFW() {
         return SystemPropTool.getProp("ro.vendor.audio.fweffect", false);
+    }
+
+    public static boolean getEarPhoneStateFinal() {
+        if (isEarphoneConnection) return true;
+        AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
+        for (AudioDeviceInfo info : outputs) {
+            if (info.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || info.getType() == AudioDeviceInfo.TYPE_USB_HEADSET) {
+                logI(TAG, "getEarPhoneState: isEarPhoneConnection: true.");
+                return true;
+            }
+        }
+
+        logI(TAG, "getEarPhoneState: isEarPhoneConnection: false.");
+        return false;
     }
 
     private void registerDebug() {
@@ -111,6 +130,7 @@ public class AutoEffectSwitchForSystem extends BaseHC {
                         if (Settings.Global.getInt(mContext.getContentResolver(), "auto_effect_switch_restore_earphone_state", 0) == 1) {
                             isEarphoneConnection = false;
                             Settings.Global.putInt(mContext.getContentResolver(), "auto_effect_switch_restore_earphone_state", 0);
+                            logI(TAG, "restore earphone state to false!!");
                         }
                     }
                 }
@@ -118,8 +138,8 @@ public class AutoEffectSwitchForSystem extends BaseHC {
     }
 
     private void reportEarphoneState() {
-        if (mContext == null)
-            Settings.Global.putInt(mContext.getContentResolver(), "auto_effect_switch_earphone_state", isEarphoneConnection ? 1 : 0);
+        if (mContext == null) return;
+        Settings.Global.putInt(mContext.getContentResolver(), "auto_effect_switch_earphone_state", isEarphoneConnection ? 1 : 0);
     }
 
     private void registerEarphoneReceiver() {

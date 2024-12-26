@@ -19,11 +19,12 @@
 package com.hchen.autoseffswitch.hook.system.control;
 
 import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_DOLBY;
+import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_DOLBY_CONTROL;
 import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_MISOUND;
+import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_MISOUND_CONTROL;
 import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_SPATIAL_AUDIO;
 import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_SURROUND;
-import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.TAG;
-import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.isEarphoneConnection;
+import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.getEarPhoneStateFinal;
 import static com.hchen.hooktool.log.XposedLog.logI;
 import static com.hchen.hooktool.tool.CoreTool.callMethod;
 import static com.hchen.hooktool.tool.CoreTool.callStaticMethod;
@@ -33,7 +34,7 @@ import static com.hchen.hooktool.tool.CoreTool.hookMethod;
 
 import android.content.Context;
 
-import com.hchen.autoseffswitch.hook.misound.callback.IControl;
+import com.hchen.autoseffswitch.hook.system.callback.IControl;
 import com.hchen.hooktool.hook.IHook;
 
 import java.util.Objects;
@@ -45,7 +46,7 @@ import java.util.UUID;
  * @author 焕晨HChen
  */
 public class AudioEffectControlForSystem extends BaseEffectControl implements IControl {
-    private Context mContext;
+    public static final String TAG = "AudioEffectControlForSystem";
     private Class<?> mAudioManagerClass = null;
     private static final UUID mDolbyUUID = UUID.fromString("9d4921da-8225-4f29-aefa-39537a04bcaa");
     private static final UUID mMiSoundUUID = UUID.fromString("5b8e36a5-144a-4c38-b1d7-0002a5d5c51b");
@@ -81,7 +82,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
                 new IHook() {
                     @Override
                     public void before() {
-                        if (!isEarphoneConnection) return;
+                        if (!getEarPhoneStateFinal()) return;
 
                         if (mDolbyEffect == null) return;
                         if (Objects.equals(mDolbyEffect, thisObject())) {
@@ -105,7 +106,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
                 new IHook() {
                     @Override
                     public void before() {
-                        if (isEarphoneConnection) {
+                        if (getEarPhoneStateFinal()) {
                             logI(TAG, "earphone is connection, skip set spatializer effect!!");
                             returnNull();
                         }
@@ -119,7 +120,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
                 new IHook() {
                     @Override
                     public void before() {
-                        if (isEarphoneConnection) {
+                        if (getEarPhoneStateFinal()) {
                             logI(TAG, "earphone is connection, skip set 3dSurround effect!!");
                             returnNull();
                         }
@@ -128,8 +129,14 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
         );
     }
 
-    public void setContext(Context context) {
-        mContext = context;
+    private boolean hasControlDolby() {
+        if (mDolbyEffect == null) return false;
+        return (boolean) callMethod(mDolbyEffect, "hasControl");
+    }
+
+    private boolean hasControlMiSound() {
+        if (mMiSoundEffect == null) return false;
+        return (boolean) callMethod(mMiSoundEffect, "hasControl");
     }
 
     private void setEnableDolbyEffect(boolean enable) {
@@ -188,11 +195,14 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
     @Override
     void updateEffectMap() {
         mEffectEnabledMap.clear();
-
         mEffectEnabledMap.put(EFFECT_DOLBY, String.valueOf(isEnabledDolbyEffect()));
         mEffectEnabledMap.put(EFFECT_MISOUND, String.valueOf(isEnabledMiSound()));
         mEffectEnabledMap.put(EFFECT_SPATIAL_AUDIO, String.valueOf(isEnabledSpatializer()));
         mEffectEnabledMap.put(EFFECT_SURROUND, String.valueOf(isEnabled3dSurround()));
+
+        mEffectHasControlMap.clear();
+        mEffectHasControlMap.put(EFFECT_DOLBY_CONTROL, String.valueOf(hasControlDolby()));
+        mEffectHasControlMap.put(EFFECT_MISOUND_CONTROL, String.valueOf(hasControlMiSound()));
     }
 
     @Override
@@ -213,9 +223,6 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
 
     @Override
     public void resetAudioEffect() {
-        if (isEarphoneConnection)
-            isEarphoneConnection = false; // 为什么还是 true ??
-
         if (mLastDolbyEnable)
             setEnableDolbyEffect(true);
         else if (mLastMiSoundEnable) {

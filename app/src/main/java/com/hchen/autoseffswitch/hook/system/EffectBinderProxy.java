@@ -19,6 +19,7 @@
 package com.hchen.autoseffswitch.hook.system;
 
 import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.mEffectInfoService;
+import static com.hchen.hooktool.log.XposedLog.logI;
 
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -47,6 +48,7 @@ public class EffectBinderProxy extends BaseHC {
                         String callerPackage = (String) getArgs(1);
                         if (intent == null) return;
                         if (!"com.miui.misound".equals(callerPackage)) return;
+                        logI(TAG, "caller package: " + callerPackage + " mEffectInfoService: " + mEffectInfoService);
 
                         Bundle bundle = new Bundle();
                         if (mEffectInfoService == null) return;

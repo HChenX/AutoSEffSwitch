@@ -41,7 +41,7 @@ public class EffectInfoService extends IEffectInfo.Stub {
 
     @Override
     public boolean isEarphoneConnection() throws RemoteException {
-        return AutoEffectSwitchForSystem.isEarphoneConnection;
+        return AutoEffectSwitchForSystem.getEarPhoneStateFinal();
     }
 
     @Override
@@ -70,5 +70,12 @@ public class EffectInfoService extends IEffectInfo.Stub {
         if (mBaseEffectControl == null)
             return Collections.emptyMap();
         return mBaseEffectControl.getEffectEnabledMap();
+    }
+
+    @Override
+    public Map<String, String> getEffectHasControlMap() throws RemoteException {
+        if (mBaseEffectControl==null)
+            return Collections.emptyMap();
+        return mBaseEffectControl.getEffectHasControlMap();
     }
 }

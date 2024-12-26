@@ -14,4 +14,6 @@ interface IEffectInfo {
     Map<String,String> getEffectActiveMap();
 
     Map<String,String> getEffectEnabledMap();
+
+    Map<String,String> getEffectHasControlMap();
 }

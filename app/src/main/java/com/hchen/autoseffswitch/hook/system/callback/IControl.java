@@ -16,14 +16,22 @@
 
  * Copyright (C) 2023-2024 HChenX
  */
-package com.hchen.autoseffswitch.config;
+package com.hchen.autoseffswitch.hook.system.callback;
+
+import android.content.Context;
 
 /**
- * 新旧实现切换
+ * 状态控制接口
  *
  * @author 焕晨HChen
  */
-public class ModuleConfig {
-    // 新版本尚不稳定
-    public static boolean useNewVersion = false;
+public interface IControl {
+    void updateLastEffectState();
+
+    void setEffectToNone(Context context);
+
+    void resetAudioEffect();
+
+    default void dumpAudioEffectState() {
+    }
 }

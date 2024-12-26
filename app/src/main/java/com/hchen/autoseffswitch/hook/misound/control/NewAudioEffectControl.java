@@ -1,8 +1,6 @@
 package com.hchen.autoseffswitch.hook.misound.control;
 
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.TAG;
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.getEarPhoneState;
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isEarPhoneConnection;
+import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.getEarPhoneStateFinal;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isSupportFW;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.mDexKit;
 import static com.hchen.hooktool.BaseHC.classLoader;
@@ -18,8 +16,8 @@ import android.content.Context;
 import android.os.Bundle;
 import android.os.RemoteException;
 
+import com.hchen.autoseffswitch.IEffectInfo;
 import com.hchen.autoseffswitch.data.EffectItem;
-import com.hchen.autoseffswitch.hook.system.binder.EffectInfoService;
 import com.hchen.hooktool.hook.IHook;
 
 import org.luckypray.dexkit.query.FindClass;
@@ -34,9 +32,10 @@ import java.lang.reflect.Method;
 import java.util.Map;
 
 public class NewAudioEffectControl {
+    public static final String TAG = "NewAudioEffectControl";
     private Object mPreference;
     private Object mEffectSelectionPrefs;
-    public EffectInfoService mEffectInfoService;
+    public IEffectInfo mIEffectInfo;
 
     public void init() {
         try {
@@ -49,7 +48,7 @@ public class NewAudioEffectControl {
             hook(dolbySwitch, new IHook() {
                 @Override
                 public void before() {
-                    if (getEarPhoneState()) {
+                    if (getEarPhoneStateFinal()) {
                         returnNull();
                         logI(TAG, "Don't set dolby mode, in earphone mode!");
                     }
@@ -65,7 +64,7 @@ public class NewAudioEffectControl {
             hook(miSoundSwitch, new IHook() {
                 @Override
                 public void before() {
-                    if (getEarPhoneState()) {
+                    if (getEarPhoneStateFinal()) {
                         returnNull();
                         logI(TAG, "Don't set misound mode, in earphone mode!");
                     }
@@ -139,9 +138,9 @@ public class NewAudioEffectControl {
         }
     }
 
-    private void updateEffectSelectionState() {
+    public void updateEffectSelectionState() {
         if (mEffectSelectionPrefs == null) return;
-        if (getEarPhoneState()) {
+        if (getEarPhoneStateFinal()) {
             callMethod(mEffectSelectionPrefs, "setEnabled", false);
             logI(TAG, "Disable effect selection: " + mEffectSelectionPrefs);
         } else
@@ -153,10 +152,19 @@ public class NewAudioEffectControl {
 
         StringBuilder sb = new StringBuilder();
         sb.append("isSupport FW: ").append(isSupportFW()).append("\n");
-        sb.append("isEarPhoneConnection: ").append(isEarPhoneConnection).append("\n");
-        if (mEffectInfoService != null) {
+        sb.append("isEarPhoneConnection: ").append(getEarPhoneStateFinal()).append("\n");
+        if (mIEffectInfo != null) {
             try {
-                Map<String, String> map = mEffectInfoService.getEffectEnabledMap();
+                Map<String, String> map = mIEffectInfo.getEffectHasControlMap();
+                sb.append("\n# Effect Control Info:\n");
+                sb.append("hasControlDolby: ").append(map.get(EffectItem.EFFECT_DOLBY_CONTROL)).append("\n");
+                sb.append("hasControlMiSound: ").append(map.get(EffectItem.EFFECT_MISOUND_CONTROL)).append("\n");
+            } catch (RemoteException e) {
+                logE(TAG, e);
+            }
+
+            try {
+                Map<String, String> map = mIEffectInfo.getEffectEnabledMap();
                 sb.append("\n# Effect Enable Info: \n");
                 sb.append("isEnableDolby: ").append(map.get(EffectItem.EFFECT_DOLBY)).append("\n");
                 sb.append("isEnableMiSound: ").append(map.get(EffectItem.EFFECT_MISOUND)).append("\n");

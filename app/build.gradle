@@ -13,7 +13,6 @@ android {
     def keyKeyAlias = properties.getProperty('keyAlias')
     def keyKeyAliasPassword = properties.getProperty('keyAliasPassword')
 
-
     signingConfigs {
         release {
             storeFile keyKeyStoreFile
@@ -34,8 +33,8 @@ android {
         minSdk 33
         targetSdk 34
         //noinspection HighAppVersionCode
-        versionCode 2024122300
-        versionName "3.2"
+        versionCode 2024122600
+        versionName "3.3"
         ndk {
             // noinspection ChromeOsAbiSupport
             abiFilters 'arm64-v8a', 'armeabi-v7a'

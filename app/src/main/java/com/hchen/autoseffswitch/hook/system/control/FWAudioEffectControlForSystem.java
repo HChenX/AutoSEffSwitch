@@ -23,18 +23,16 @@ import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_MISOUND;
 import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_NONE;
 import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_SPATIAL_AUDIO;
 import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_SURROUND;
-import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.TAG;
-import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.isEarphoneConnection;
+import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.getEarPhoneStateFinal;
 import static com.hchen.hooktool.log.XposedLog.logI;
-import static com.hchen.hooktool.log.XposedLog.logW;
 import static com.hchen.hooktool.tool.CoreTool.callMethod;
 import static com.hchen.hooktool.tool.CoreTool.getField;
 import static com.hchen.hooktool.tool.CoreTool.hookMethod;
 
 import android.content.Context;
+import android.provider.Settings;
 
-import com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch;
-import com.hchen.autoseffswitch.hook.misound.callback.IControl;
+import com.hchen.autoseffswitch.hook.system.callback.IControl;
 import com.hchen.hooktool.hook.IHook;
 
 import java.util.ArrayList;
@@ -46,6 +44,7 @@ import java.util.Arrays;
  * @author 焕晨HChen
  */
 public class FWAudioEffectControlForSystem extends BaseEffectControl implements IControl {
+    public static final String TAG = "FWAudioEffectControlForSystem";
     private Object mPresenter = null;
     private Object mCenter = null;
     public static final String[] mEffectArray = new String[]{
@@ -72,7 +71,8 @@ public class FWAudioEffectControlForSystem extends BaseEffectControl implements 
                 new IHook() {
                     @Override
                     public void before() {
-                        if (isEarphoneConnection) {
+                        observeCall();
+                        if (getEarPhoneStateFinal()) {
                             logI(TAG, "earphone is connection, skip set effect: " + getArgs(0) + "!!");
                             returnNull();
                         }
@@ -100,12 +100,23 @@ public class FWAudioEffectControlForSystem extends BaseEffectControl implements 
     }
 
     private void setEffectActive(String effect, boolean active) {
-        if (mCenter != null) {
-            if (isEarphoneConnection) {
-                logW(TAG, "earphone is connection, can't set effect active to: " + effect + "!!");
-                return;
+        if (mPresenter != null) {
+            switch (effect) {
+                case EFFECT_DOLBY -> {
+                    if (active)
+                        callMethod(mPresenter, "setDolbyActive");
+                }
+                case EFFECT_MISOUND -> {
+                    if (active)
+                        callMethod(mPresenter, "setMiSoundActive");
+                }
+                case EFFECT_SPATIAL_AUDIO -> {
+                    callMethod(mPresenter, "setSpatialAudioActive", active);
+                }
+                case EFFECT_SURROUND -> {
+                    callMethod(mPresenter, "setSurroundActive", active);
+                }
             }
-            callMethod(mCenter, "setEffectActive", effect, active);
         }
     }
 
@@ -122,6 +133,8 @@ public class FWAudioEffectControlForSystem extends BaseEffectControl implements 
         mEffectActiveMap.clear();
         Arrays.stream(mEffectArray).forEach(s ->
                 mEffectActiveMap.put(s, String.valueOf(isEffectActive(s))));
+
+        logI(TAG, "updateEffectMap: mCenter: " + mCenter + ", mPresenter: " + mPresenter);
     }
 
     @Override
@@ -137,13 +150,13 @@ public class FWAudioEffectControlForSystem extends BaseEffectControl implements 
     public void setEffectToNone(Context context) {
         if (mPresenter == null) return;
         callMethod(mPresenter, "setEffectDeactivate");
+
+        if (context != null)
+            Settings.Global.putString(context.getContentResolver(), "effect_implementer", EFFECT_NONE);
     }
 
     @Override
     public void resetAudioEffect() {
-        if (isEarphoneConnection)
-            isEarphoneConnection = false; // 为什么还是 true ??
-
         if (mLastEffectList.isEmpty()) {
             if (isEffectSupported(EFFECT_DOLBY) && isEffectAvailable(EFFECT_DOLBY)) {
                 setEffectActive(EFFECT_DOLBY, true);
@@ -158,6 +171,7 @@ public class FWAudioEffectControlForSystem extends BaseEffectControl implements 
             return;
         }
         mLastEffectList.forEach(s -> setEffectActive(s, true));
+        mLastEffectList.clear();
     }
 
     @Override
@@ -165,6 +179,6 @@ public class FWAudioEffectControlForSystem extends BaseEffectControl implements 
         StringBuilder builder = new StringBuilder();
         Arrays.stream(mEffectArray).forEach(s ->
                 builder.append(s).append(": ").append(isEffectActive(s)).append(", "));
-        logI(NewAutoSEffSwitch.TAG, builder.toString());
+        logI(TAG, builder.toString());
     }
 }

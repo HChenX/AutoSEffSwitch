@@ -26,6 +26,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.ContentObserver;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.os.Bundle;
@@ -34,9 +35,11 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.UserManager;
+import android.provider.Settings;
 
 import androidx.annotation.NonNull;
 
+import com.hchen.autoseffswitch.IEffectInfo;
 import com.hchen.autoseffswitch.config.ModuleConfig;
 import com.hchen.autoseffswitch.hook.misound.backups.BackupsUtils;
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
@@ -44,7 +47,6 @@ import com.hchen.autoseffswitch.hook.misound.control.AudioEffectControl;
 import com.hchen.autoseffswitch.hook.misound.control.FWAudioEffectControl;
 import com.hchen.autoseffswitch.hook.misound.control.NewAudioEffectControl;
 import com.hchen.autoseffswitch.hook.misound.control.NewFWAudioEffectControl;
-import com.hchen.autoseffswitch.hook.system.binder.EffectInfoService;
 import com.hchen.hooktool.BaseHC;
 import com.hchen.hooktool.tool.additional.SystemPropTool;
 
@@ -56,10 +58,11 @@ import org.luckypray.dexkit.DexKitBridge;
  * @author 焕晨HChen
  */
 public class NewAutoSEffSwitch extends BaseHC {
-    public static final String TAG = "AutoSEffSwitch";
+    public static final String TAG = "NewAutoSEffSwitch";
     private Context mContext;
     public static DexKitBridge mDexKit;
     public static boolean isEarPhoneConnection = false;
+    public static AudioManager mAudioManager;
     private NewFWAudioEffectControl mNewFWAudioEffectControl = null;
     private NewAudioEffectControl mNewAudioEffectControl = null;
 
@@ -70,8 +73,6 @@ public class NewAutoSEffSwitch extends BaseHC {
     public static boolean isBroadcastReceiverCanUse = false;
     @Deprecated
     public static boolean shouldFixXiaoMiShit = false;
-    @Deprecated
-    public static AudioManager mAudioManager;
     @Deprecated
     private DumpHandler mDumpHandler;
     @Deprecated
@@ -119,27 +120,69 @@ public class NewAutoSEffSwitch extends BaseHC {
             return;
         }
 
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
-        Intent intent = mContext.registerReceiver(new EmptyBroadcastReceiver(), new IntentFilter());
+        Intent intent = mContext.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         if (intent == null) return;
         Bundle bundle = intent.getBundleExtra("effect_info");
         if (bundle == null) return;
-        EffectInfoService effectInfoService = (EffectInfoService) bundle.getBinder("effect_info");
-        if (effectInfoService == null) return;
+        IEffectInfo iEffectInfo = IEffectInfo.Stub.asInterface(bundle.getBinder("effect_info"));
+        logI(TAG, "EffectInfoService: " + iEffectInfo);
+        if (iEffectInfo == null) return;
         if (mNewFWAudioEffectControl != null)
-            mNewFWAudioEffectControl.mEffectInfoService = effectInfoService;
+            mNewFWAudioEffectControl.mIEffectInfo = iEffectInfo;
         else if (mNewAudioEffectControl != null) {
-            mNewAudioEffectControl.mEffectInfoService = effectInfoService;
+            mNewAudioEffectControl.mIEffectInfo = iEffectInfo;
         }
         try {
-            isEarPhoneConnection = effectInfoService.isEarphoneConnection();
+            isEarPhoneConnection = iEffectInfo.isEarphoneConnection();
         } catch (RemoteException e) {
             logE(TAG, e);
         }
+
+        mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+        mContext.getContentResolver().registerContentObserver(
+                Settings.Global.getUriFor("auto_effect_switch_earphone_state"),
+                false,
+                new ContentObserver(new Handler(mContext.getMainLooper())) {
+                    @Override
+                    public void onChange(boolean selfChange) {
+                        if (selfChange) return;
+                        int result = Settings.Global.getInt(mContext.getContentResolver(), "auto_effect_switch_earphone_state", 0);
+                        logI(TAG, "settings observer earphone state change to: " + result);
+                        if (result == 0)
+                            isEarPhoneConnection = false;
+                         else if (result == 1)
+                            isEarPhoneConnection = true;
+
+                        if (mNewFWAudioEffectControl != null)
+                            mNewFWAudioEffectControl.updateEffectSelectionState();
+                        else if (mNewAudioEffectControl != null) {
+                            mNewAudioEffectControl.updateEffectSelectionState();
+                        }
+                    }
+                }
+        );
+
+        if (mNewFWAudioEffectControl != null)
+            callStaticMethod("android.media.audiofx.AudioEffectCenter", "getInstance", mContext);
+    }
+
+    public static boolean getEarPhoneStateFinal() {
+        if (isEarPhoneConnection) return true;
+        AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
+        for (AudioDeviceInfo info : outputs) {
+            if (info.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || info.getType() == AudioDeviceInfo.TYPE_USB_HEADSET) {
+                logI(TAG, "getEarPhoneState: isEarPhoneConnection: true.");
+                return true;
+            }
+        }
+
+        logI(TAG, "getEarPhoneState: isEarPhoneConnection: false.");
+        return false;
     }
 
     private static class EmptyBroadcastReceiver extends BroadcastReceiver {
+
         @Override
         public void onReceive(Context context, Intent intent) {
         }
@@ -191,10 +234,6 @@ public class NewAutoSEffSwitch extends BaseHC {
 
         isWiredHeadsetConnection = checkIsWiredHeadset();
         updateEarPhoneState();
-    }
-
-    public static boolean getEarPhoneState() {
-        return isEarPhoneConnection;
     }
 
     @Deprecated

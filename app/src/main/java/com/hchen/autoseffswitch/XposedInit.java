@@ -19,6 +19,8 @@
 package com.hchen.autoseffswitch;
 
 import com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch;
+import com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem;
+import com.hchen.autoseffswitch.hook.system.EffectBinderProxy;
 import com.hchen.hooktool.HCEntrance;
 import com.hchen.hooktool.HCInit;
 
@@ -44,19 +46,15 @@ public class XposedInit extends HCEntrance {
 
     @Override
     public void onLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
-        if ("com.miui.misound".equals(lpparam.packageName)) {
-            HCInit.initLoadPackageParam(lpparam);
-            init(lpparam.packageName, lpparam);
-        }
-    }
-
-    public void init(String pkg, XC_LoadPackage.LoadPackageParam loadPackageParam) {
-        switch (pkg) {
-            /*case "android" -> {
-                new CmdHelper().onLoadPackage();
-            }*/
+        switch (lpparam.packageName) {
+            case "android" -> {
+                HCInit.initLoadPackageParam(lpparam);
+                new EffectBinderProxy().onLoadPackage();
+                new AutoEffectSwitchForSystem().onLoadPackage();
+            }
             case "com.miui.misound" -> {
-                String hostDir = loadPackageParam.appInfo.sourceDir;
+                HCInit.initLoadPackageParam(lpparam);
+                String hostDir = lpparam.appInfo.sourceDir;
                 System.loadLibrary("dexkit");
                 NewAutoSEffSwitch.mDexKit = DexKitBridge.create(hostDir);
                 new NewAutoSEffSwitch().onApplicationCreate().onLoadPackage();
