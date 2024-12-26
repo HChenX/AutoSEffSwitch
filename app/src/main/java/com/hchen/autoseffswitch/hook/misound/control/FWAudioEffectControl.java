@@ -14,16 +14,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 
- * Copyright (C) 2023-2024 AutoSEffSwitch Contributions
+ * Copyright (C) 2023-2024 HChenX
  */
 package com.hchen.autoseffswitch.hook.misound.control;
 
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.TAG;
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.getEarPhoneState;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isBroadcastReceiverCanUse;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isEarPhoneConnection;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isSupportFW;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.mDexKit;
+import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.oldGetEarPhoneState;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.shouldFixXiaoMiShit;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.updateEarPhoneState;
 import static com.hchen.hooktool.BaseHC.classLoader;
@@ -65,7 +65,9 @@ import java.util.function.BiConsumer;
  * 较新版本的切换逻辑
  *
  * @author 焕晨HChen
+ * @deprecated
  */
+@Deprecated
 public class FWAudioEffectControl implements IControl {
     private Context mContext;
     @Nullable
@@ -108,11 +110,11 @@ public class FWAudioEffectControl implements IControl {
             hook(audioEffectCenterEnable, new IHook() {
                 @Override
                 public void before() {
-                    if (getEarPhoneState()) {
+                    if (oldGetEarPhoneState()) {
                         returnNull();
                         logI(TAG, "Dont set dolby or misound, in earphone mode!!");
                     }
-                    logI(TAG, "im set dolby or misound! ear: " + getEarPhoneState());
+                    logI(TAG, "im set dolby or misound! ear: " + oldGetEarPhoneState());
                 }
             });
 
@@ -125,7 +127,7 @@ public class FWAudioEffectControl implements IControl {
             hook(click, new IHook() {
                 @Override
                 public void before() {
-                    if (getEarPhoneState())
+                    if (oldGetEarPhoneState())
                         returnFalse();
                 }
             });
@@ -246,7 +248,7 @@ public class FWAudioEffectControl implements IControl {
 
     private void updateEffectSelectionState() {
         if (effectSelectionPrefs == null) return;
-        if (getEarPhoneState()) {
+        if (oldGetEarPhoneState()) {
             callMethod(effectSelectionPrefs, "setEnabled", false);
             logI(TAG, "Disable effect selection: " + effectSelectionPrefs);
         } else

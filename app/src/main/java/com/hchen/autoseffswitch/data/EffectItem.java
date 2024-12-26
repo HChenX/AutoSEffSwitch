@@ -16,24 +16,17 @@
 
  * Copyright (C) 2023-2024 HChenX
  */
-package com.hchen.autoseffswitch.hook.misound.callback;
-
-import android.content.Context;
+package com.hchen.autoseffswitch.data;
 
 /**
- * 状态控制接口
+ * 音效列表
  *
  * @author 焕晨HChen
- * @deprecated
  */
-@Deprecated
-public interface IControl {
-    void updateLastEffectState();
-
-    void setEffectToNone(Context context);
-
-    void resetAudioEffect();
-
-    default void dumpAudioEffectState() {
-    }
+public class EffectItem {
+    public static final String EFFECT_DOLBY = "dolby";
+    public static final String EFFECT_MISOUND = "misound";
+    public static final String EFFECT_NONE = "none";
+    public static final String EFFECT_SPATIAL_AUDIO = "spatial";
+    public static final String EFFECT_SURROUND = "surround";
 }

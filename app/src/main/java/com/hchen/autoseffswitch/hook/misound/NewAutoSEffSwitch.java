@@ -14,10 +14,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 
- * Copyright (C) 2023-2024 AutoSEffSwitch Contributions
+ * Copyright (C) 2023-2024 HChenX
  */
 package com.hchen.autoseffswitch.hook.misound;
 
+import static com.hchen.hooktool.log.XposedLog.logE;
 import static com.hchen.hooktool.log.XposedLog.logI;
 
 import android.bluetooth.BluetoothDevice;
@@ -27,17 +28,23 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.RemoteException;
 import android.os.UserManager;
 
 import androidx.annotation.NonNull;
 
+import com.hchen.autoseffswitch.config.ModuleConfig;
 import com.hchen.autoseffswitch.hook.misound.backups.BackupsUtils;
 import com.hchen.autoseffswitch.hook.misound.callback.IControl;
 import com.hchen.autoseffswitch.hook.misound.control.AudioEffectControl;
 import com.hchen.autoseffswitch.hook.misound.control.FWAudioEffectControl;
+import com.hchen.autoseffswitch.hook.misound.control.NewAudioEffectControl;
+import com.hchen.autoseffswitch.hook.misound.control.NewFWAudioEffectControl;
+import com.hchen.autoseffswitch.hook.system.binder.EffectInfoService;
 import com.hchen.hooktool.BaseHC;
 import com.hchen.hooktool.tool.additional.SystemPropTool;
 
@@ -53,26 +60,50 @@ public class NewAutoSEffSwitch extends BaseHC {
     private Context mContext;
     public static DexKitBridge mDexKit;
     public static boolean isEarPhoneConnection = false;
+    private NewFWAudioEffectControl mNewFWAudioEffectControl = null;
+    private NewAudioEffectControl mNewAudioEffectControl = null;
+
+    // ------------- 已弃用的旧实现 ------------
+    @Deprecated
     public static boolean isWiredHeadsetConnection = false;
+    @Deprecated
     public static boolean isBroadcastReceiverCanUse = false;
+    @Deprecated
     public static boolean shouldFixXiaoMiShit = false;
+    @Deprecated
     public static AudioManager mAudioManager;
+    @Deprecated
     private DumpHandler mDumpHandler;
+    @Deprecated
     private FWAudioEffectControl mFWAudioEffectControl = null;
+    @Deprecated
     private AudioEffectControl mAudioEffectControl = null;
+    @Deprecated
     private static final int DUMP = 0;
+    @Deprecated
     private IControl mControl;
+    // ---------------------------------------
 
     @Override
     public void init() {
-        if (isSupportFW()) {
-            mFWAudioEffectControl = new FWAudioEffectControl();
-            mFWAudioEffectControl.init();
-            mControl = mFWAudioEffectControl;
+        if (ModuleConfig.useNewVersion) {
+            if (isSupportFW()) {
+                mNewFWAudioEffectControl = new NewFWAudioEffectControl();
+                mNewFWAudioEffectControl.init();
+            } else {
+                mNewAudioEffectControl = new NewAudioEffectControl();
+                mNewAudioEffectControl.init();
+            }
         } else {
-            mAudioEffectControl = new AudioEffectControl();
-            mAudioEffectControl.init();
-            mControl = mAudioEffectControl;
+            if (isSupportFW()) {
+                mFWAudioEffectControl = new FWAudioEffectControl();
+                mFWAudioEffectControl.init();
+                mControl = mFWAudioEffectControl;
+            } else {
+                mAudioEffectControl = new AudioEffectControl();
+                mAudioEffectControl.init();
+                mControl = mAudioEffectControl;
+            }
         }
     }
 
@@ -83,6 +114,40 @@ public class NewAutoSEffSwitch extends BaseHC {
     @Override
     protected void onApplicationAfter(Context context) {
         mContext = context;
+        if (!ModuleConfig.useNewVersion) {
+            odlOnApplicationAfter();
+            return;
+        }
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
+        Intent intent = mContext.registerReceiver(new EmptyBroadcastReceiver(), new IntentFilter());
+        if (intent == null) return;
+        Bundle bundle = intent.getBundleExtra("effect_info");
+        if (bundle == null) return;
+        EffectInfoService effectInfoService = (EffectInfoService) bundle.getBinder("effect_info");
+        if (effectInfoService == null) return;
+        if (mNewFWAudioEffectControl != null)
+            mNewFWAudioEffectControl.mEffectInfoService = effectInfoService;
+        else if (mNewAudioEffectControl != null) {
+            mNewAudioEffectControl.mEffectInfoService = effectInfoService;
+        }
+        try {
+            isEarPhoneConnection = effectInfoService.isEarphoneConnection();
+        } catch (RemoteException e) {
+            logE(TAG, e);
+        }
+    }
+
+    private static class EmptyBroadcastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+        }
+    }
+
+    // ------------- 已弃用的旧实现 ------------
+    @Deprecated
+    private void odlOnApplicationAfter() {
         if (mFWAudioEffectControl != null && mFWAudioEffectControl.mAudioEffectCenter != null) {
             mFWAudioEffectControl.mAudioEffectCenterInstance = callStaticMethod(mFWAudioEffectControl.mAudioEffectCenter, "getInstance", mContext);
             logI(TAG, "mAudioEffectCenterInstance: " + mFWAudioEffectControl.mAudioEffectCenterInstance);
@@ -96,25 +161,25 @@ public class NewAutoSEffSwitch extends BaseHC {
         mDumpHandler = new DumpHandler(mContext.getMainLooper());
 
         BackupsUtils backupsUtils = null;
-        UserManager userManager = (UserManager) context.getSystemService(Context.USER_SERVICE);
+        UserManager userManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         if (!userManager.isUserUnlocked()) {
             mContext.registerReceiver(new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     if (Intent.ACTION_USER_UNLOCKED.equals(intent.getAction())) {
-                        context.unregisterReceiver(this);
                         if (mAudioEffectControl != null)
-                            mAudioEffectControl.setBackups(new BackupsUtils(context));
+                            mAudioEffectControl.setBackups(BackupsUtils.getBackupsUtils(context));
                         else if (mFWAudioEffectControl != null)
-                            mFWAudioEffectControl.setBackups(new BackupsUtils(context));
+                            mFWAudioEffectControl.setBackups(BackupsUtils.getBackupsUtils(context));
+                        logI(TAG, "user unlocked!!");
                     }
                 }
             }, new IntentFilter(Intent.ACTION_USER_UNLOCKED));
         } else {
-            backupsUtils = new BackupsUtils(mContext);
+            backupsUtils = BackupsUtils.getBackupsUtils(mContext);
         }
 
-        mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
         if (mAudioEffectControl != null) {
             mAudioEffectControl.setContext(mContext);
             mAudioEffectControl.setBackups(backupsUtils);
@@ -128,6 +193,11 @@ public class NewAutoSEffSwitch extends BaseHC {
         updateEarPhoneState();
     }
 
+    public static boolean getEarPhoneState() {
+        return isEarPhoneConnection;
+    }
+
+    @Deprecated
     public static void updateEarPhoneState() {
         if (mAudioManager == null) return;
         if (isBroadcastReceiverCanUse) {
@@ -135,15 +205,17 @@ public class NewAutoSEffSwitch extends BaseHC {
             return;
         }
 
-        isEarPhoneConnection = getEarPhoneState();
+        isEarPhoneConnection = oldGetEarPhoneState();
     }
 
-    public static boolean getEarPhoneState() {
+    @Deprecated
+    public static boolean oldGetEarPhoneState() {
         if (isEarPhoneConnection) return true;
 
         AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
         for (AudioDeviceInfo info : outputs) {
-            if (info.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
+            if (info.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || info.getType() == AudioDeviceInfo.TYPE_USB_HEADSET) {
                 logI(TAG, "getEarPhoneState: isEarPhoneConnection: true.");
                 return true;
             }
@@ -153,11 +225,13 @@ public class NewAutoSEffSwitch extends BaseHC {
         return false;
     }
 
+    @Deprecated
     private boolean checkIsWiredHeadset() {
         // 检查有线耳机
         AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
         for (AudioDeviceInfo info : outputs) {
-            if (info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
+            if (info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || info.getType() == AudioDeviceInfo.TYPE_USB_HEADSET) {
                 logI(TAG, "checkIsWiredHeadset: wired headset: true.");
                 return true;
             }
@@ -166,6 +240,7 @@ public class NewAutoSEffSwitch extends BaseHC {
         return false;
     }
 
+    @Deprecated
     private class AudioManagerListener extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -241,7 +316,7 @@ public class NewAutoSEffSwitch extends BaseHC {
                 } catch (InterruptedException e) {
                 }
                 long nowTime = System.currentTimeMillis();
-                result = getEarPhoneState();
+                result = oldGetEarPhoneState();
                 if (result || (nowTime - time > timeout)) break;
             }
 
@@ -256,6 +331,7 @@ public class NewAutoSEffSwitch extends BaseHC {
         }
     }
 
+    @Deprecated
     private class DumpHandler extends Handler {
         public DumpHandler(Looper looper) {
             super(looper);
@@ -270,4 +346,5 @@ public class NewAutoSEffSwitch extends BaseHC {
             }
         }
     }
+    // -------------------------------------------
 }

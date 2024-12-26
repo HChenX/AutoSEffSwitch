@@ -74,6 +74,10 @@ android {
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_21.toString()
     }
+
+    buildFeatures {
+        aidl true
+    }
 }
 
 dependencies {

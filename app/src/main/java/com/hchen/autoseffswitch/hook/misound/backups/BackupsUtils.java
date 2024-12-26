@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 
- * Copyright (C) 2023-2024 AutoSEffSwitch Contributions
+ * Copyright (C) 2023-2024 HChenX
  */
 package com.hchen.autoseffswitch.hook.misound.backups;
 
@@ -31,15 +31,22 @@ import java.util.Map;
  * @author 焕晨HChen
  * */
 public class BackupsUtils {
+    private static BackupsUtils mBackupsUtils = null;
     private IPrefsApply iPrefsApply;
 
-    public BackupsUtils(Context context) {
+    private BackupsUtils(Context context) {
         try {
             iPrefsApply = PrefsTool.prefs(context, "effect_state_backups");
             iPrefsApply.editor().putBoolean("support_backups", true).apply();
         } catch (Throwable e) {
             iPrefsApply = null;
         }
+    }
+
+    public static BackupsUtils getBackupsUtils(Context context) {
+        if (mBackupsUtils == null)
+            mBackupsUtils = new BackupsUtils(context);
+        return mBackupsUtils;
     }
 
     public void saveDolbyState(boolean enable) {
