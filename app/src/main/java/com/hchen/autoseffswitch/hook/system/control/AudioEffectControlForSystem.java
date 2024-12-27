@@ -65,6 +65,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
                 new IHook() {
                     @Override
                     public void after() {
+                        observeCall();
                         UUID mUUID = (UUID) getArgs(1);
                         if (mUUID == null) return;
                         if (mUUID.equals(mDolbyUUID)) {
@@ -82,6 +83,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
                 new IHook() {
                     @Override
                     public void before() {
+                        observeCall();
                         if (!getEarPhoneStateFinal()) return;
 
                         if (mDolbyEffect == null) return;
@@ -106,6 +108,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
                 new IHook() {
                     @Override
                     public void before() {
+                        observeCall();
                         if (getEarPhoneStateFinal()) {
                             logI(TAG, "earphone is connection, skip set spatializer effect!!");
                             returnNull();
@@ -120,6 +123,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
                 new IHook() {
                     @Override
                     public void before() {
+                        observeCall();
                         if (getEarPhoneStateFinal()) {
                             logI(TAG, "earphone is connection, skip set 3dSurround effect!!");
                             returnNull();

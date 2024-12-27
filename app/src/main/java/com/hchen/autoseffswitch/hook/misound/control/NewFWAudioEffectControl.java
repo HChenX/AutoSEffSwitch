@@ -1,5 +1,6 @@
 package com.hchen.autoseffswitch.hook.misound.control;
 
+import static com.hchen.autoseffswitch.data.EffectItem.mEffectArray;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.getEarPhoneStateFinal;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isSupportFW;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.mDexKit;
@@ -11,6 +12,7 @@ import static com.hchen.hooktool.tool.CoreTool.findClass;
 import static com.hchen.hooktool.tool.CoreTool.getField;
 import static com.hchen.hooktool.tool.CoreTool.hook;
 import static com.hchen.hooktool.tool.CoreTool.hookAll;
+import static com.hchen.hooktool.tool.CoreTool.hookMethod;
 import static com.hchen.hooktool.tool.CoreTool.newInstance;
 
 import android.content.Context;
@@ -30,6 +32,7 @@ import org.luckypray.dexkit.query.matchers.MethodMatcher;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Map;
 
 public class NewFWAudioEffectControl {
@@ -39,6 +42,20 @@ public class NewFWAudioEffectControl {
     public IEffectInfo mIEffectInfo;
 
     public void init() {
+        hookMethod("android.media.audiofx.AudioEffectCenter",
+                "setEffectActive",
+                String.class, boolean.class,
+                new IHook() {
+                    @Override
+                    public void before() {
+                        if (getEarPhoneStateFinal()) {
+                            logI(TAG, "earphone is connection, skip set effect: " + getArgs(0) + "!!");
+                            returnNull();
+                        }
+                    }
+                }
+        );
+
         try {
             Method audioEffectCenterEnable = mDexKit.findMethod(FindMethod.create()
                     .matcher(MethodMatcher.create()
@@ -145,9 +162,12 @@ public class NewFWAudioEffectControl {
             try {
                 Map<String, String> map = mIEffectInfo.getEffectSupportMap();
                 sb.append("\n# Effect Support Info:\n");
-                map.forEach((s, s2) -> sb.append("isSupport").append(s.substring(0, 1).toUpperCase())
-                        .append(s.substring(1).toLowerCase())
-                        .append(": ").append(s2).append("\n"));
+                Arrays.stream(mEffectArray).forEach(s -> {
+                    String state = map.get(s);
+                    sb.append("isSupport").append(s.substring(0, 1).toUpperCase())
+                            .append(s.substring(1).toLowerCase())
+                            .append(": ").append(state).append("\n");
+                });
             } catch (RemoteException e) {
                 logE(TAG, e);
             }
@@ -155,9 +175,12 @@ public class NewFWAudioEffectControl {
             try {
                 Map<String, String> map = mIEffectInfo.getEffectAvailableMap();
                 sb.append("\n# Effect Available Info:\n");
-                map.forEach((s, s2) -> sb.append("isAvailable").append(s.substring(0, 1).toUpperCase())
-                        .append(s.substring(1).toLowerCase())
-                        .append(": ").append(s2).append("\n"));
+                Arrays.stream(mEffectArray).forEach(s -> {
+                    String state = map.get(s);
+                    sb.append("isAvailable").append(s.substring(0, 1).toUpperCase())
+                            .append(s.substring(1).toLowerCase())
+                            .append(": ").append(state).append("\n");
+                });
             } catch (RemoteException e) {
                 logE(TAG, e);
             }
@@ -166,9 +189,12 @@ public class NewFWAudioEffectControl {
                 Map<String, String> map = mIEffectInfo.getEffectActiveMap();
                 logI(TAG, "Effect Active Info: " + map);
                 sb.append("\n# Effect Active Info:\n");
-                map.forEach((s, s2) -> sb.append("isActive").append(s.substring(0, 1).toUpperCase())
-                        .append(s.substring(1).toLowerCase())
-                        .append(": ").append(s2).append("\n"));
+                Arrays.stream(mEffectArray).forEach(s -> {
+                    String state = map.get(s);
+                    sb.append("isActive").append(s.substring(0, 1).toUpperCase())
+                            .append(s.substring(1).toLowerCase())
+                            .append(": ").append(state).append("\n");
+                });
             } catch (RemoteException e) {
                 logE(TAG, e);
             }

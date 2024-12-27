@@ -23,6 +23,7 @@ import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_MISOUND;
 import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_NONE;
 import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_SPATIAL_AUDIO;
 import static com.hchen.autoseffswitch.data.EffectItem.EFFECT_SURROUND;
+import static com.hchen.autoseffswitch.data.EffectItem.mEffectArray;
 import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.getEarPhoneStateFinal;
 import static com.hchen.hooktool.log.XposedLog.logI;
 import static com.hchen.hooktool.tool.CoreTool.callMethod;
@@ -47,9 +48,6 @@ public class FWAudioEffectControlForSystem extends BaseEffectControl implements 
     public static final String TAG = "FWAudioEffectControlForSystem";
     private Object mPresenter = null;
     private Object mCenter = null;
-    public static final String[] mEffectArray = new String[]{
-            EFFECT_DOLBY, EFFECT_MISOUND, EFFECT_NONE, EFFECT_SPATIAL_AUDIO, EFFECT_SURROUND
-    };
     public static final ArrayList<String> mLastEffectList = new ArrayList<>();
 
     public void init() {
@@ -71,11 +69,23 @@ public class FWAudioEffectControlForSystem extends BaseEffectControl implements 
                 new IHook() {
                     @Override
                     public void before() {
-                        observeCall();
                         if (getEarPhoneStateFinal()) {
                             logI(TAG, "earphone is connection, skip set effect: " + getArgs(0) + "!!");
                             returnNull();
                         }
+                    }
+                }
+        );
+
+        hookMethod("android.media.audiofx.AudioEffectCenter",
+                "release",
+                new IHook() {
+                    @Override
+                    public void after() {
+                        mPresenter = null;
+                        mCenter = null;
+
+                        logI(TAG, "AudioEffectCenter release...");
                     }
                 }
         );
@@ -134,7 +144,8 @@ public class FWAudioEffectControlForSystem extends BaseEffectControl implements 
         Arrays.stream(mEffectArray).forEach(s ->
                 mEffectActiveMap.put(s, String.valueOf(isEffectActive(s))));
 
-        logI(TAG, "updateEffectMap: mCenter: " + mCenter + ", mPresenter: " + mPresenter);
+        logI(TAG, "updateEffectMap: mCenter: " + mCenter + ", mPresenter: " + mPresenter +
+                ", mEffectSupportMap: " + mEffectSupportMap + ", mEffectAvailableMap: " + mEffectAvailableMap + ", mEffectActiveMap: " + mEffectActiveMap);
     }
 
     @Override

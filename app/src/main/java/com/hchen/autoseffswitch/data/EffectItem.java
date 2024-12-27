@@ -31,4 +31,7 @@ public class EffectItem {
     public static final String EFFECT_NONE = "none";
     public static final String EFFECT_SPATIAL_AUDIO = "spatial";
     public static final String EFFECT_SURROUND = "surround";
+    public static final String[] mEffectArray = new String[]{
+            EFFECT_DOLBY, EFFECT_MISOUND, EFFECT_NONE, EFFECT_SPATIAL_AUDIO, EFFECT_SURROUND
+    };
 }

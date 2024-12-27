@@ -25,5 +25,5 @@ package com.hchen.autoseffswitch.config;
  */
 public class ModuleConfig {
     // 新版本尚不稳定
-    public static boolean useNewVersion = false;
+    public static boolean useNewVersion = true;
 }

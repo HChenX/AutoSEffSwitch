@@ -18,9 +18,11 @@
  */
 package com.hchen.autoseffswitch;
 
+import com.hchen.autoseffswitch.config.ModuleConfig;
 import com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch;
 import com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem;
 import com.hchen.autoseffswitch.hook.system.EffectBinderProxy;
+import com.hchen.autoseffswitch.hook.systemui.AutoSEffSwitchForSystemUi;
 import com.hchen.hooktool.HCEntrance;
 import com.hchen.hooktool.HCInit;
 
@@ -48,9 +50,15 @@ public class XposedInit extends HCEntrance {
     public void onLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
         switch (lpparam.packageName) {
             case "android" -> {
+                if (ModuleConfig.useNewVersion) {
+                    HCInit.initLoadPackageParam(lpparam);
+                    new EffectBinderProxy().onLoadPackage();
+                    new AutoEffectSwitchForSystem().onLoadPackage();
+                }
+            }
+            case "com.android.systemui" -> {
                 HCInit.initLoadPackageParam(lpparam);
-                new EffectBinderProxy().onLoadPackage();
-                new AutoEffectSwitchForSystem().onLoadPackage();
+                new AutoSEffSwitchForSystemUi().onLoadPackage();
             }
             case "com.miui.misound" -> {
                 HCInit.initLoadPackageParam(lpparam);

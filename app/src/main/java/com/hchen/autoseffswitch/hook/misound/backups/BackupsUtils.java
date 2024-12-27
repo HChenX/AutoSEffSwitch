@@ -29,7 +29,9 @@ import java.util.Map;
  * 基本的状态储存类。
  *
  * @author 焕晨HChen
+ * @deprecated
  * */
+@Deprecated
 public class BackupsUtils {
     private static BackupsUtils mBackupsUtils = null;
     private IPrefsApply iPrefsApply;
