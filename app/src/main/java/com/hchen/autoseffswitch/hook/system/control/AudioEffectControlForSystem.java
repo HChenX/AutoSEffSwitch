@@ -34,7 +34,7 @@ import static com.hchen.hooktool.tool.CoreTool.hookMethod;
 
 import android.content.Context;
 
-import com.hchen.autoseffswitch.hook.system.callback.IControl;
+import com.hchen.autoseffswitch.hook.system.callback.IControlForSystem;
 import com.hchen.hooktool.hook.IHook;
 
 import java.util.Objects;
@@ -45,7 +45,7 @@ import java.util.UUID;
  *
  * @author 焕晨HChen
  */
-public class AudioEffectControlForSystem extends BaseEffectControl implements IControl {
+public class AudioEffectControlForSystem extends BaseEffectControl implements IControlForSystem {
     public static final String TAG = "AudioEffectControlForSystem";
     private Class<?> mAudioManagerClass = null;
     private static final UUID mDolbyUUID = UUID.fromString("9d4921da-8225-4f29-aefa-39537a04bcaa");

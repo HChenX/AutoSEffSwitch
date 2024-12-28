@@ -37,7 +37,7 @@ import android.provider.Settings;
 import androidx.annotation.NonNull;
 
 import com.hchen.autoseffswitch.hook.system.binder.EffectInfoService;
-import com.hchen.autoseffswitch.hook.system.callback.IControl;
+import com.hchen.autoseffswitch.hook.system.callback.IControlForSystem;
 import com.hchen.autoseffswitch.hook.system.control.AudioEffectControlForSystem;
 import com.hchen.autoseffswitch.hook.system.control.FWAudioEffectControlForSystem;
 import com.hchen.hooktool.BaseHC;
@@ -57,18 +57,18 @@ public class AutoEffectSwitchForSystem extends BaseHC {
     private AudioEffectControlForSystem mAudioEffectControlForSystem = null;
     private FWAudioEffectControlForSystem mFWAudioEffectControlForSystem = null;
     public static boolean isEarphoneConnection = false;
-    private IControl mIControl = null;
+    private IControlForSystem mIControlForSystem = null;
 
     @Override
     protected void init() {
         if (isSupportFW()) {
             mFWAudioEffectControlForSystem = new FWAudioEffectControlForSystem();
             mFWAudioEffectControlForSystem.init();
-            mIControl = mFWAudioEffectControlForSystem;
+            mIControlForSystem = mFWAudioEffectControlForSystem;
         } else {
             mAudioEffectControlForSystem = new AudioEffectControlForSystem();
             mAudioEffectControlForSystem.init();
-            mIControl = mAudioEffectControlForSystem;
+            mIControlForSystem = mAudioEffectControlForSystem;
         }
 
         hookMethod("com.android.server.am.ActivityManagerService",
@@ -169,14 +169,14 @@ public class AutoEffectSwitchForSystem extends BaseHC {
                     case BluetoothDevice.ACTION_ACL_CONNECTED -> {
                         isEarphoneConnection = true;
                         reportEarphoneState();
-                        mIControl.updateLastEffectState();
-                        mIControl.setEffectToNone(context);
+                        mIControlForSystem.updateLastEffectState();
+                        mIControlForSystem.setEffectToNone(context);
                         dump();
                     }
                     case BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                         isEarphoneConnection = false;
                         reportEarphoneState();
-                        mIControl.resetAudioEffect();
+                        mIControlForSystem.resetAudioEffect();
                         dump();
                     }
                     case AudioManager.ACTION_HEADSET_PLUG -> {
@@ -185,13 +185,13 @@ public class AutoEffectSwitchForSystem extends BaseHC {
                             if (state == 1) {
                                 isEarphoneConnection = true;
                                 reportEarphoneState();
-                                mIControl.updateLastEffectState();
-                                mIControl.setEffectToNone(context);
+                                mIControlForSystem.updateLastEffectState();
+                                mIControlForSystem.setEffectToNone(context);
                                 dump();
                             } else if (state == 0) {
                                 isEarphoneConnection = false;
                                 reportEarphoneState();
-                                mIControl.resetAudioEffect();
+                                mIControlForSystem.resetAudioEffect();
                                 dump();
                             }
                         }
@@ -216,7 +216,7 @@ public class AutoEffectSwitchForSystem extends BaseHC {
         public void handleMessage(@NonNull Message msg) {
             int what = msg.what;
             if (what == DUMP) {
-                mIControl.dumpAudioEffectState();
+                mIControlForSystem.dumpAudioEffectState();
             }
         }
     }

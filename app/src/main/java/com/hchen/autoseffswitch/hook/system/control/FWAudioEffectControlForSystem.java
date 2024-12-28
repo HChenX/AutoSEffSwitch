@@ -33,7 +33,7 @@ import static com.hchen.hooktool.tool.CoreTool.hookMethod;
 import android.content.Context;
 import android.provider.Settings;
 
-import com.hchen.autoseffswitch.hook.system.callback.IControl;
+import com.hchen.autoseffswitch.hook.system.callback.IControlForSystem;
 import com.hchen.hooktool.hook.IHook;
 
 import java.util.ArrayList;
@@ -44,7 +44,7 @@ import java.util.Arrays;
  *
  * @author 焕晨HChen
  */
-public class FWAudioEffectControlForSystem extends BaseEffectControl implements IControl {
+public class FWAudioEffectControlForSystem extends BaseEffectControl implements IControlForSystem {
     public static final String TAG = "FWAudioEffectControlForSystem";
     private Object mPresenter = null;
     private Object mCenter = null;

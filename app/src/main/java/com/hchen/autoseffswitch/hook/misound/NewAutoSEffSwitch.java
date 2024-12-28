@@ -20,6 +20,7 @@ package com.hchen.autoseffswitch.hook.misound;
 
 import static com.hchen.hooktool.log.XposedLog.logE;
 import static com.hchen.hooktool.log.XposedLog.logI;
+import static com.hchen.hooktool.log.XposedLog.logW;
 
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -63,6 +64,7 @@ public class NewAutoSEffSwitch extends BaseHC {
     public static DexKitBridge mDexKit;
     public static boolean isEarPhoneConnection = false;
     public static AudioManager mAudioManager;
+    private static IEffectInfo mIEffectInfo;
     private NewFWAudioEffectControl mNewFWAudioEffectControl = null;
     private NewAudioEffectControl mNewAudioEffectControl = null;
 
@@ -124,16 +126,16 @@ public class NewAutoSEffSwitch extends BaseHC {
         if (intent == null) return;
         Bundle bundle = intent.getBundleExtra("effect_info");
         if (bundle == null) return;
-        IEffectInfo iEffectInfo = IEffectInfo.Stub.asInterface(bundle.getBinder("effect_info"));
-        logI(TAG, "EffectInfoService: " + iEffectInfo);
-        if (iEffectInfo == null) return;
+        mIEffectInfo = IEffectInfo.Stub.asInterface(bundle.getBinder("effect_info"));
+        logI(TAG, "onApplicationAfter: EffectInfoService: " + mIEffectInfo);
+        if (mIEffectInfo == null) return;
         if (mNewFWAudioEffectControl != null)
-            mNewFWAudioEffectControl.mIEffectInfo = iEffectInfo;
+            mNewFWAudioEffectControl.mIEffectInfo = mIEffectInfo;
         else if (mNewAudioEffectControl != null) {
-            mNewAudioEffectControl.mIEffectInfo = iEffectInfo;
+            mNewAudioEffectControl.mIEffectInfo = mIEffectInfo;
         }
         try {
-            isEarPhoneConnection = iEffectInfo.isEarphoneConnection();
+            isEarPhoneConnection = mIEffectInfo.isEarphoneConnection();
         } catch (RemoteException e) {
             logE(TAG, e);
         }
@@ -150,7 +152,7 @@ public class NewAutoSEffSwitch extends BaseHC {
                         logI(TAG, "settings observer earphone state change to: " + result);
                         if (result == 0)
                             isEarPhoneConnection = false;
-                         else if (result == 1)
+                        else if (result == 1)
                             isEarPhoneConnection = true;
 
                         if (mNewFWAudioEffectControl != null)
@@ -167,25 +169,16 @@ public class NewAutoSEffSwitch extends BaseHC {
     }
 
     public static boolean getEarPhoneStateFinal() {
-        if (isEarPhoneConnection) return true;
-        AudioDeviceInfo[] outputs = mAudioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
-        for (AudioDeviceInfo info : outputs) {
-            if (info.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                    info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || info.getType() == AudioDeviceInfo.TYPE_USB_HEADSET) {
-                logI(TAG, "getEarPhoneState: isEarPhoneConnection: true.");
-                return true;
+        if (mIEffectInfo != null) {
+            try {
+                return mIEffectInfo.isEarphoneConnection();
+            } catch (RemoteException e) {
+                logE(TAG, e);
+                return false;
             }
         }
-
-        logI(TAG, "getEarPhoneState: isEarPhoneConnection: false.");
+        logW(TAG, "getEarPhoneStateFinal: mIEffectInfo is null!!");
         return false;
-    }
-
-    private static class EmptyBroadcastReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-        }
     }
 
     // ------------- 已弃用的旧实现 ------------

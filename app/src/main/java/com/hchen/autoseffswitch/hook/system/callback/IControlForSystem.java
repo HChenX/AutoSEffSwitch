@@ -25,7 +25,7 @@ import android.content.Context;
  *
  * @author 焕晨HChen
  */
-public interface IControl {
+public interface IControlForSystem {
     void updateLastEffectState();
 
     void setEffectToNone(Context context);
