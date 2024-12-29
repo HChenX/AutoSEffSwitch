@@ -29,8 +29,8 @@ import static com.hchen.hooktool.log.XposedLog.logI;
 import static com.hchen.hooktool.tool.CoreTool.callMethod;
 import static com.hchen.hooktool.tool.CoreTool.callStaticMethod;
 import static com.hchen.hooktool.tool.CoreTool.findClass;
-import static com.hchen.hooktool.tool.CoreTool.hookConstructor;
 import static com.hchen.hooktool.tool.CoreTool.hookMethod;
+import static com.hchen.hooktool.tool.CoreTool.newInstance;
 
 import android.content.Context;
 
@@ -48,10 +48,12 @@ import java.util.UUID;
 public class AudioEffectControlForSystem extends BaseEffectControl implements IControlForSystem {
     public static final String TAG = "AudioEffectControlForSystem";
     private Class<?> mAudioManagerClass = null;
+    private Class<?> mMiSoundClass = null;
+    private Class<?> mDoblyClass = null;
     private static final UUID mDolbyUUID = UUID.fromString("9d4921da-8225-4f29-aefa-39537a04bcaa");
     private static final UUID mMiSoundUUID = UUID.fromString("5b8e36a5-144a-4c38-b1d7-0002a5d5c51b");
-    private Object mDolbyEffect = null;
-    private Object mMiSoundEffect = null;
+    private Object mDolbyEffectInstance = null;
+    private Object mMiSoundInstance = null;
     private boolean mLastDolbyEnable = false;
     private boolean mLastMiSoundEnable = false;
     private boolean mLastSpatializerEnable = false;
@@ -59,23 +61,11 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
 
     public void init() {
         mAudioManagerClass = findClass("android.media.AudioManager").get();
+        mMiSoundClass = findClass("android.media.audiofx.MiSound").get();
+        mDoblyClass = findClass("com.android.server.audio.dolbyeffect.DolbyEffectController$DolbyAudioEffectHelper").get();
 
-        hookConstructor("android.media.audiofx.AudioEffect",
-                UUID.class, UUID.class, int.class, int.class, "android.media.AudioDeviceAttributes", boolean.class,
-                new IHook() {
-                    @Override
-                    public void after() {
-                        observeCall();
-                        UUID mUUID = (UUID) getArgs(1);
-                        if (mUUID == null) return;
-                        if (mUUID.equals(mDolbyUUID)) {
-                            mDolbyEffect = thisObject();
-                        } else if (mUUID.equals(mMiSoundUUID)) {
-                            mMiSoundEffect = thisObject();
-                        }
-                    }
-                }
-        );
+        mDolbyEffectInstance = newInstance(mDoblyClass, 0, 0);
+        mMiSoundInstance = newInstance(mMiSoundClass, 0, 0);
 
         hookMethod("android.media.audiofx.AudioEffect",
                 "setEnabled",
@@ -86,17 +76,19 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
                         observeCall();
                         if (!getEarPhoneStateFinal()) return;
 
-                        if (mDolbyEffect == null) return;
-                        if (Objects.equals(mDolbyEffect, thisObject())) {
-                            logI(TAG, "earphone is connection, skip set dolby effect!!");
-                            setResult(0); // SUCCESS
-                            return;
+                        if (mDolbyEffectInstance != null) {
+                            if (Objects.equals(mDolbyEffectInstance, thisObject())) {
+                                logI(TAG, "earphone is connection, skip set dolby effect!!");
+                                setResult(0); // SUCCESS
+                                return;
+                            }
                         }
 
-                        if (mMiSoundEffect == null) return;
-                        if (Objects.equals(mMiSoundEffect, thisObject())) {
-                            logI(TAG, "earphone is connection, skip set misound effect!!");
-                            setResult(0); // SUCCESS
+                        if (mMiSoundInstance != null) {
+                            if (Objects.equals(mMiSoundInstance, thisObject())) {
+                                logI(TAG, "earphone is connection, skip set misound effect!!");
+                                setResult(0); // SUCCESS
+                            }
                         }
                     }
                 }
@@ -108,7 +100,6 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
                 new IHook() {
                     @Override
                     public void before() {
-                        observeCall();
                         if (getEarPhoneStateFinal()) {
                             logI(TAG, "earphone is connection, skip set spatializer effect!!");
                             returnNull();
@@ -123,7 +114,6 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
                 new IHook() {
                     @Override
                     public void before() {
-                        observeCall();
                         if (getEarPhoneStateFinal()) {
                             logI(TAG, "earphone is connection, skip set 3dSurround effect!!");
                             returnNull();
@@ -133,31 +123,78 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
         );
     }
 
+    private void releaseDolbyEffectIfNeed() {
+        if (mDolbyEffectInstance == null)
+            mDolbyEffectInstance = newInstanceDolbyEffect();
+
+        if (mDolbyEffectInstance == null) return;
+        if (hasControlDolby()) return;
+
+        callMethod(mDolbyEffectInstance, "release");
+        mDolbyEffectInstance = null;
+        mDolbyEffectInstance = newInstanceDolbyEffect();
+    }
+
+    private void releaseMiSoundIfNeed() {
+        if (mMiSoundInstance == null)
+            mMiSoundInstance = newInstanceMiSound();
+
+        if (mMiSoundInstance == null) return;
+        if (hasControlMiSound()) return;
+
+        callMethod(mMiSoundInstance, "release");
+        mMiSoundInstance = null;
+        mMiSoundInstance = newInstanceMiSound();
+    }
+
+    private Object newInstanceDolbyEffect() {
+        if (mDoblyClass == null) return null;
+        return newInstance(mDoblyClass, 0, 0);
+    }
+
+    private Object newInstanceMiSound() {
+        if (mMiSoundClass == null) return null;
+        return newInstance(mMiSoundClass, 0, 0);
+    }
+
     private boolean hasControlDolby() {
-        if (mDolbyEffect == null) return false;
-        return (boolean) callMethod(mDolbyEffect, "hasControl");
+        if (mDolbyEffectInstance == null) return false;
+        return (boolean) callMethod(mDolbyEffectInstance, "hasControl");
     }
 
     private boolean hasControlMiSound() {
-        if (mMiSoundEffect == null) return false;
-        return (boolean) callMethod(mMiSoundEffect, "hasControl");
+        if (mMiSoundInstance == null) return false;
+        return (boolean) callMethod(mMiSoundInstance, "hasControl");
     }
 
     private void setEnableDolbyEffect(boolean enable) {
-        if (mDolbyEffect == null) return;
-        callMethod(mDolbyEffect, "checkState", "setEnabled()");
-        callMethod(mMiSoundEffect, "native_setEnabled", enable);
+        if (mDolbyEffectInstance == null) return;
+        releaseDolbyEffectIfNeed();
+
+        byte[] bArr = new byte[12];
+        int int32ToByteArray = 0 + int32ToByteArray(0, bArr, 0);
+        int32ToByteArray(enable ? 1 : 0, bArr, int32ToByteArray + int32ToByteArray(1, bArr, int32ToByteArray));
+        callMethod(mDolbyEffectInstance, "checkReturnValue", callMethod(mDolbyEffectInstance, "setParameter", 5, bArr));
+        callMethod(mDolbyEffectInstance, "checkState", "setEnabled()");
+        callMethod(mDolbyEffectInstance, "native_setEnabled", enable);
+    }
+
+    private int int32ToByteArray(int src, byte[] dst, int index) {
+        return (int) callStaticMethod(mDoblyClass, "int32ToByteArray", src, dst, index);
     }
 
     private void setEnableMiSound(boolean enable) {
-        if (mMiSoundEffect == null) return;
-        callMethod(mMiSoundEffect, "checkState", "setEnabled()");
-        callMethod(mMiSoundEffect, "native_setEnabled", enable);
+        if (mMiSoundInstance == null) return;
+        releaseMiSoundIfNeed();
+
+        callMethod(mMiSoundInstance, "checkStatus", callMethod(mMiSoundInstance, "setParameter", 25, enable ? 1 : 0));
+        callMethod(mMiSoundInstance, "checkState", "setEnabled()");
+        callMethod(mMiSoundInstance, "native_setEnabled", enable);
     }
 
     private void setEnable3dSurround(boolean enable) {
-        if (mMiSoundEffect == null) return;
-        callMethod(mMiSoundEffect, "checkStatus", callMethod(mMiSoundEffect, "setParameter", 20, enable ? 1 : 0));
+        if (mMiSoundInstance == null) return;
+        callMethod(mMiSoundInstance, "checkStatus", callMethod(mMiSoundInstance, "setParameter", 20, enable ? 1 : 0));
     }
 
     private void setEnableSpatializer(boolean enable) {
@@ -174,19 +211,31 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
     }
 
     private boolean isEnabledDolbyEffect() {
-        if (mDolbyEffect == null) return false;
-        return (boolean) callMethod(mDolbyEffect, "getEnabled");
+        if (mDolbyEffectInstance == null) return false;
+        releaseDolbyEffectIfNeed();
+
+        byte[] baValue = new byte[12];
+        int32ToByteArray(0, baValue, 0);
+        callMethod(mDolbyEffectInstance, "checkReturnValue", callMethod(mDolbyEffectInstance, "getParameter", 0 + 5, baValue));
+        int en = byteArrayToInt32(baValue);
+        return en > 0;
+    }
+
+    private static int byteArrayToInt32(byte[] ba) {
+        return ((ba[3] & 255) << 24) | ((ba[2] & 255) << 16) | ((ba[1] & 255) << 8) | (ba[0] & 255);
     }
 
     private boolean isEnabledMiSound() {
-        if (mMiSoundEffect == null) return false;
-        return (boolean) callMethod(mMiSoundEffect, "getEnabled");
+        if (mMiSoundClass == null) return false;
+        releaseMiSoundIfNeed();
+
+        return (boolean) callMethod(mMiSoundInstance, "getEnabled");
     }
 
     private boolean isEnabled3dSurround() {
-        if (mMiSoundEffect == null) return false;
+        if (mMiSoundInstance == null) return false;
         int[] value = new int[1];
-        callMethod(mMiSoundEffect, "checkStatus", callMethod(mMiSoundEffect, "getParameter", 20, value));
+        callMethod(mMiSoundInstance, "checkStatus", callMethod(mMiSoundInstance, "getParameter", 20, value));
         return value[0] == 1;
     }
 
