@@ -150,10 +150,6 @@ public class NewAutoSEffSwitch extends BaseHC {
                         if (selfChange) return;
                         int result = Settings.Global.getInt(mContext.getContentResolver(), "auto_effect_switch_earphone_state", 0);
                         logI(TAG, "settings observer earphone state change to: " + result);
-                        if (result == 0)
-                            isEarPhoneConnection = false;
-                        else if (result == 1)
-                            isEarPhoneConnection = true;
 
                         if (mNewFWAudioEffectControl != null)
                             mNewFWAudioEffectControl.updateEffectSelectionState();

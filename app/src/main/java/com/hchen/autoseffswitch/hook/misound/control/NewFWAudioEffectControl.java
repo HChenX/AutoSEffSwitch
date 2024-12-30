@@ -57,36 +57,6 @@ public class NewFWAudioEffectControl {
         );
 
         try {
-            Method audioEffectCenterEnable = mDexKit.findMethod(FindMethod.create()
-                    .matcher(MethodMatcher.create()
-                            .declaredClass(ClassMatcher.create().usingStrings("setEffectActive IllegalAccessException"))
-                            .usingStrings("setEffectActive IllegalAccessException")
-                    )
-            ).singleOrNull().getMethodInstance(classLoader);
-            hook(audioEffectCenterEnable, new IHook() {
-                @Override
-                public void before() {
-                    if (getEarPhoneStateFinal()) {
-                        returnNull();
-                        logI(TAG, "Dont set dolby or misound, in earphone mode!!");
-                    }
-                }
-            });
-
-            Method click = mDexKit.findMethod(FindMethod.create()
-                    .matcher(MethodMatcher.create()
-                            .declaredClass(ClassMatcher.create().usingStrings("click vSoundEffectSelection "))
-                            .usingStrings("click vSoundEffectSelection ")
-                    )
-            ).singleOrNull().getMethodInstance(classLoader);
-            hook(click, new IHook() {
-                @Override
-                public void before() {
-                    if (getEarPhoneStateFinal())
-                        returnFalse();
-                }
-            });
-
             Class<?> activityClass = mDexKit.findClass(FindClass.create()
                     .matcher(ClassMatcher.create().usingStrings("refreshOnEffectChangeBroadcast AV Dolby: "))
             ).singleOrNull().getInstance(classLoader);

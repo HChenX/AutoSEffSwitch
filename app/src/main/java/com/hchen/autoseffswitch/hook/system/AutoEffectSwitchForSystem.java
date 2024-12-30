@@ -52,6 +52,9 @@ import com.hchen.hooktool.tool.additional.SystemPropTool;
 public class AutoEffectSwitchForSystem extends BaseHC {
     public static final String TAG = "AutoEffectSwitchForSystem";
     public Context mContext;
+    private static Handler mHandler;
+    private static boolean shouldWaiting = false;
+    private static final int STATE_CHANGE = 0;
     private static AudioManager mAudioManager = null;
     public static EffectInfoService mEffectInfoService = null;
     private AudioEffectControlForSystem mAudioEffectControlForSystem = null;
@@ -71,28 +74,32 @@ public class AutoEffectSwitchForSystem extends BaseHC {
             mIControlForSystem = mAudioEffectControlForSystem;
         }
 
-        hookMethod("com.android.server.am.ActivityManagerService",
-                "systemReady",
-                Runnable.class, "com.android.server.utils.TimingsTraceAndSlog",
+        hookMethod("com.android.server.audio.AudioService",
+                "onSystemReady",
                 new IHook() {
                     @Override
                     public void after() {
                         mContext = (Context) getThisField("mContext");
                         if (mContext == null) return; // 不可能会是 null 吧??
+
+                        mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
                         if (mEffectInfoService == null) {
                             if (mFWAudioEffectControlForSystem != null)
                                 mEffectInfoService = new EffectInfoService(mFWAudioEffectControlForSystem);
                             else if (mAudioEffectControlForSystem != null)
                                 mEffectInfoService = new EffectInfoService(mAudioEffectControlForSystem);
                         }
+                        if (mAudioEffectControlForSystem != null)
+                            mAudioEffectControlForSystem.initEffect(mContext, mAudioManager);
 
-                        if (existsClass("android.media.audiofx.AudioEffectCenter"))
+                        if (isSupportFW() && existsClass("android.media.audiofx.AudioEffectCenter"))
                             callStaticMethod("android.media.audiofx.AudioEffectCenter", "getInstance", mContext); // 初始化
-                        mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+
+                        initHandler();
                         registerEarphoneReceiver();
                         registerDebug();
                         reportEarphoneState();
-                        logI(TAG, "system ready!!");
+                        logI(TAG, "audio system ready!!");
                     }
                 }
         );
@@ -109,12 +116,34 @@ public class AutoEffectSwitchForSystem extends BaseHC {
             if (info.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
                     info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || info.getType() == AudioDeviceInfo.TYPE_USB_HEADSET) {
                 logI(TAG, "getEarPhoneState: isEarPhoneConnection: true.");
+                shouldWaiting = true;
+                if (mHandler != null) {
+                    mHandler.removeMessages(STATE_CHANGE);
+                    mHandler.sendMessageDelayed(mHandler.obtainMessage(STATE_CHANGE), 1000L);
+                }
                 return true;
             }
         }
 
+        if (shouldWaiting) {
+            logI(TAG, "getEarPhoneState: isWaiting: true.");
+            return true;
+        }
         logI(TAG, "getEarPhoneState: isEarPhoneConnection: false.");
         return false;
+    }
+
+    private void initHandler() {
+        if (mContext == null) return;
+        mHandler = new Handler(mContext.getMainLooper()) {
+            @Override
+            public void handleMessage(@NonNull Message msg) {
+                if (msg.what == STATE_CHANGE) {
+                    shouldWaiting = false;
+                    reportEarphoneState();
+                }
+            }
+        };
     }
 
     private void registerDebug() {
@@ -168,14 +197,12 @@ public class AutoEffectSwitchForSystem extends BaseHC {
                 switch (action) {
                     case BluetoothDevice.ACTION_ACL_CONNECTED -> {
                         isEarphoneConnection = true;
-                        reportEarphoneState();
                         mIControlForSystem.updateLastEffectState();
                         mIControlForSystem.setEffectToNone(context);
                         dump();
                     }
                     case BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                         isEarphoneConnection = false;
-                        reportEarphoneState();
                         mIControlForSystem.resetAudioEffect();
                         dump();
                     }
@@ -184,13 +211,11 @@ public class AutoEffectSwitchForSystem extends BaseHC {
                             int state = intent.getIntExtra("state", 0);
                             if (state == 1) {
                                 isEarphoneConnection = true;
-                                reportEarphoneState();
                                 mIControlForSystem.updateLastEffectState();
                                 mIControlForSystem.setEffectToNone(context);
                                 dump();
                             } else if (state == 0) {
                                 isEarphoneConnection = false;
-                                reportEarphoneState();
                                 mIControlForSystem.resetAudioEffect();
                                 dump();
                             }
@@ -207,7 +232,7 @@ public class AutoEffectSwitchForSystem extends BaseHC {
         }
     }
 
-    class DumpHandler extends Handler {
+    private class DumpHandler extends Handler {
         public DumpHandler(Looper looper) {
             super(looper);
         }
