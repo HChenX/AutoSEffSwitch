@@ -89,8 +89,6 @@ public class AutoEffectSwitchForSystem extends BaseHC {
                             else if (mAudioEffectControlForSystem != null)
                                 mEffectInfoService = new EffectInfoService(mAudioEffectControlForSystem);
                         }
-                        if (mAudioEffectControlForSystem != null)
-                            mAudioEffectControlForSystem.initEffect(mContext, mAudioManager);
 
                         if (isSupportFW() && existsClass("android.media.audiofx.AudioEffectCenter"))
                             callStaticMethod("android.media.audiofx.AudioEffectCenter", "getInstance", mContext); // 初始化
@@ -194,6 +192,7 @@ public class AutoEffectSwitchForSystem extends BaseHC {
 
             String action = intent.getAction();
             if (action != null) {
+                logI(TAG, "onReceive: action: " + action);
                 switch (action) {
                     case BluetoothDevice.ACTION_ACL_CONNECTED -> {
                         isEarphoneConnection = true;
