@@ -27,6 +27,7 @@ import static com.hchen.autoseffswitch.data.EffectItem.mEffectArray;
 import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.getEarPhoneStateFinal;
 import static com.hchen.hooktool.log.XposedLog.logI;
 import static com.hchen.hooktool.tool.CoreTool.callMethod;
+import static com.hchen.hooktool.tool.CoreTool.callStaticMethod;
 import static com.hchen.hooktool.tool.CoreTool.getField;
 import static com.hchen.hooktool.tool.CoreTool.hookMethod;
 
@@ -46,6 +47,7 @@ import java.util.Arrays;
  */
 public class FWAudioEffectControlForSystem extends BaseEffectControl implements IControlForSystem {
     public static final String TAG = "FWAudioEffectControlForSystem";
+    private Context mContext;
     private Object mPresenter = null;
     private Object mCenter = null;
     public static final ArrayList<String> mLastEffectList = new ArrayList<>();
@@ -91,25 +93,39 @@ public class FWAudioEffectControlForSystem extends BaseEffectControl implements 
         );
     }
 
+    public void setContext(Context context) {
+        mContext = context;
+    }
+
+    private void getInstanceIfNeed() {
+        if (mCenter == null)
+            if (mContext != null)
+                callStaticMethod("android.media.audiofx.AudioEffectCenter", "getInstance", mContext);
+    }
+
     private boolean isEffectSupported(String effect) {
+        getInstanceIfNeed();
         if (mCenter != null)
             return (boolean) callMethod(mCenter, "isEffectSupported", effect);
         return false;
     }
 
     private boolean isEffectAvailable(String effect) {
+        getInstanceIfNeed();
         if (mCenter != null)
             return (boolean) callMethod(mCenter, "isEffectAvailable", effect);
         return false;
     }
 
     private boolean isEffectActive(String effect) {
+        getInstanceIfNeed();
         if (mCenter != null)
             return (boolean) callMethod(mCenter, "isEffectActive", effect);
         return false;
     }
 
     private void setEffectActive(String effect, boolean active) {
+        getInstanceIfNeed();
         if (mPresenter != null) {
             switch (effect) {
                 case EFFECT_DOLBY -> {

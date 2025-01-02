@@ -3,5 +3,6 @@
     <string-array name="hook_app">
         <item>android</item>
         <item>com.miui.misound</item>
+        <item>com.android.systemui</item>
     </string-array>
 </resources>

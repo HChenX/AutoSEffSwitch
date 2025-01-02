@@ -82,6 +82,8 @@ public class AutoEffectSwitchForSystem extends BaseHC {
                         mContext = (Context) getThisField("mContext");
                         if (mContext == null) return; // 不可能会是 null 吧??
 
+                        if (mFWAudioEffectControlForSystem != null)
+                            mFWAudioEffectControlForSystem.setContext(mContext);
                         mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
                         if (mEffectInfoService == null) {
                             if (mFWAudioEffectControlForSystem != null)
@@ -89,9 +91,6 @@ public class AutoEffectSwitchForSystem extends BaseHC {
                             else if (mAudioEffectControlForSystem != null)
                                 mEffectInfoService = new EffectInfoService(mAudioEffectControlForSystem);
                         }
-
-                        if (isSupportFW() && existsClass("android.media.audiofx.AudioEffectCenter"))
-                            callStaticMethod("android.media.audiofx.AudioEffectCenter", "getInstance", mContext); // 初始化
 
                         initHandler();
                         registerEarphoneReceiver();

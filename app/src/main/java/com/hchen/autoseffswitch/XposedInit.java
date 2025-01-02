@@ -60,7 +60,7 @@ public class XposedInit extends HCEntrance {
             }
             case "com.android.systemui" -> {
                 HCInit.initLoadPackageParam(lpparam);
-                new AutoSEffSwitchForSystemUi().onLoadPackage();
+                new AutoSEffSwitchForSystemUi().onApplicationCreate().onLoadPackage();
             }
             case "com.miui.misound" -> {
                 HCInit.initLoadPackageParam(lpparam);
