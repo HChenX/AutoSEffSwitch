@@ -15,18 +15,20 @@ import com.hchen.hooktool.BaseHC;
 import com.hchen.hooktool.hook.IHook;
 import com.hchen.hooktool.tool.additional.SystemPropTool;
 
+import java.util.function.Supplier;
+
 public class AutoSEffSwitchForSystemUi extends BaseHC {
     private static final String TAG = "AutoSEffSwitchForSystemUi";
     private Context mContext;
+    private boolean isInit = false;
     private static IEffectInfo mIEffectInfo;
 
     @Override
     protected void init() {
-        if (isSupportFW()) {
+        if (isSupportFW())
             onSupportFW();
-        } else {
-
-        }
+        else
+            onNotSupportFW();
     }
 
     public static boolean isSupportFW() {
@@ -75,6 +77,33 @@ public class AutoSEffSwitchForSystemUi extends BaseHC {
     }
 
     private void onNotSupportFW() {
+        hookMethod("com.android.systemui.shared.plugins.PluginInstance$PluginFactory",
+                "createPluginContext",
+                new IHook() {
+                    @Override
+                    public void after() {
+                        if (isInit) return;
+                        Supplier<?> mClassLoaderFactory = (Supplier<?>) getThisField("mClassLoaderFactory");
+                        load((ClassLoader) mClassLoaderFactory.get());
+                        isInit = true;
+                    }
+                }
+        );
+    }
 
+    private void load(ClassLoader classLoader) {
+        hookMethod("miui.systemui.quicksettings.soundeffect.DolbyAtomsSoundEffectTile",
+                classLoader,
+                "handleClick",
+                new IHook() {
+                    @Override
+                    public void before() {
+                        if (getEarPhoneStateFinal()) {
+                            logI(TAG, "earphone is connection, skip set effect: " + getArgs(0) + "!!");
+                            returnNull();
+                        }
+                    }
+                }
+        );
     }
 }
