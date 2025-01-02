@@ -19,13 +19,13 @@
 package com.hchen.autoseffswitch.hook.misound.control;
 
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.TAG;
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isBroadcastReceiverCanUse;
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isEarPhoneConnection;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.isSupportFW;
 import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.mDexKit;
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.oldGetEarPhoneState;
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.shouldFixXiaoMiShit;
-import static com.hchen.autoseffswitch.hook.misound.NewAutoSEffSwitch.updateEarPhoneState;
+import static com.hchen.autoseffswitch.hook.misound.OldAutoSEffSwitch.isBroadcastReceiverCanUse;
+import static com.hchen.autoseffswitch.hook.misound.OldAutoSEffSwitch.isEarPhoneConnection;
+import static com.hchen.autoseffswitch.hook.misound.OldAutoSEffSwitch.oldGetEarPhoneState;
+import static com.hchen.autoseffswitch.hook.misound.OldAutoSEffSwitch.shouldFixXiaoMiShit;
+import static com.hchen.autoseffswitch.hook.misound.OldAutoSEffSwitch.updateEarPhoneState;
 import static com.hchen.hooktool.BaseHC.classLoader;
 import static com.hchen.hooktool.log.XposedLog.logE;
 import static com.hchen.hooktool.log.XposedLog.logI;

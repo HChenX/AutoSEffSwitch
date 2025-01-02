@@ -25,6 +25,7 @@ import com.hchen.autoseffswitch.hook.system.EffectBinderProxy;
 import com.hchen.autoseffswitch.hook.systemui.AutoSEffSwitchForSystemUi;
 import com.hchen.hooktool.HCEntrance;
 import com.hchen.hooktool.HCInit;
+import com.hchen.hooktool.tool.additional.SystemPropTool;
 
 import org.luckypray.dexkit.DexKitBridge;
 
@@ -50,6 +51,7 @@ public class XposedInit extends HCEntrance {
     public void onLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
         switch (lpparam.packageName) {
             case "android" -> {
+                ModuleConfig.useNewVersion = updateUseNewVersion();
                 if (ModuleConfig.useNewVersion) {
                     HCInit.initLoadPackageParam(lpparam);
                     new EffectBinderProxy().onLoadPackage();
@@ -69,5 +71,13 @@ public class XposedInit extends HCEntrance {
                 NewAutoSEffSwitch.mDexKit.close();
             }
         }
+    }
+
+    private boolean updateUseNewVersion() {
+        try {
+            return !SystemPropTool.getProp("persist.auto.effect.switch.use.old.version", false);
+        } catch (Throwable e) {
+        }
+        return true;
     }
 }
