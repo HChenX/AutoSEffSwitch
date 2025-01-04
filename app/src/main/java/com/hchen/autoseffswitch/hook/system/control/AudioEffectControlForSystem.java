@@ -28,9 +28,9 @@ import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.get
 import static com.hchen.hooktool.log.XposedLog.logI;
 import static com.hchen.hooktool.tool.CoreTool.callMethod;
 import static com.hchen.hooktool.tool.CoreTool.callStaticMethod;
+import static com.hchen.hooktool.tool.CoreTool.callSuperPrivateMethod;
 import static com.hchen.hooktool.tool.CoreTool.existsClass;
 import static com.hchen.hooktool.tool.CoreTool.findClass;
-import static com.hchen.hooktool.tool.CoreTool.findMethod;
 import static com.hchen.hooktool.tool.CoreTool.hookMethod;
 import static com.hchen.hooktool.tool.CoreTool.newInstance;
 
@@ -39,7 +39,6 @@ import android.content.Context;
 import com.hchen.autoseffswitch.hook.system.callback.IControlForSystem;
 import com.hchen.hooktool.hook.IHook;
 
-import java.lang.reflect.Method;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -128,9 +127,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
         );
     }
 
-
     // -------- Effect Utils --------
-
     private Object initEffectInstance(Object instance, Class<?> cls) {
         if (cls == null) return null;
         if (instance != null) {
@@ -147,15 +144,11 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
 
     private void setEnableEffect(Object instance, boolean enable) {
         if (instance == null || instance.getClass().getSuperclass() == null) return;
-        Class<?> superEffectClass = instance.getClass().getSuperclass();
-        Method native_setEnabled = findMethod(superEffectClass, "native_setEnabled", boolean.class).get();
         callMethod(instance, "checkState", "setEnabled()");
-        callMethod(instance, native_setEnabled, enable); // super private
+        callSuperPrivateMethod(instance, "native_setEnabled", enable); // super private
     }
 
-
     // -------- Dolby --------
-
     private void setEnableDolbyEffect(boolean enable) {
         if (mDolbyClass == null) return;
         mDolbyInstance = initEffectInstance(mDolbyInstance, mDolbyClass);
@@ -195,9 +188,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
         return ((ba[3] & 255) << 24) | ((ba[2] & 255) << 16) | ((ba[1] & 255) << 8) | (ba[0] & 255);
     }
 
-
     // -------- MiSound --------
-
     private void setEnableMiSound(boolean enable) {
         if (mMiSoundInstance == null) return;
         mMiSoundInstance = initEffectInstance(mMiSoundInstance, mMiSoundClass);
@@ -213,9 +204,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
         return (boolean) callMethod(mMiSoundInstance, "getEnabled");
     }
 
-
     // -------- Spatializer --------
-
     private boolean isAvailableSpatializer() {
         if (mAudioManagerClass == null) return false;
         Object sService = callStaticMethod(mAudioManagerClass, "getService");
@@ -235,9 +224,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
         return (boolean) callMethod(sService, "isSpatializerEnabled");
     }
 
-
     // -------- 3d Surround --------
-
     private void setEnable3dSurround(boolean enable) {
         if (mMiSoundInstance == null) return;
         callMethod(mMiSoundInstance, "checkStatus", callMethod(mMiSoundInstance, "setParameter", 20, enable ? 1 : 0));
@@ -250,9 +237,7 @@ public class AudioEffectControlForSystem extends BaseEffectControl implements IC
         return value[0] == 1;
     }
 
-
     // -------- Control --------
-
     @Override
     void updateEffectMap() {
         mEffectHasControlMap.clear();
