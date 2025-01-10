@@ -21,7 +21,8 @@ package com.hchen.autoseffswitch.hook.system;
 import static com.hchen.autoseffswitch.hook.system.AutoEffectSwitchForSystem.EarphoneBroadcastReceiver.DUMP;
 import static com.hchen.hooktool.log.XposedLog.logI;
 
-import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothA2dp;
+import android.bluetooth.BluetoothLeAudio;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -54,6 +55,7 @@ public class AutoEffectSwitchForSystem extends BaseHC {
     public Context mContext;
     private static Handler mHandler;
     private static boolean shouldWaiting = false;
+    private static boolean isLeAudioConnected = false;
     private static final int STATE_CHANGE = 0;
     private static AudioManager mAudioManager = null;
     public static EffectInfoService mEffectInfoService = null;
@@ -174,8 +176,8 @@ public class AutoEffectSwitchForSystem extends BaseHC {
         if (mContext == null) return;
 
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
-        intentFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+        intentFilter.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
+        intentFilter.addAction(BluetoothLeAudio.ACTION_LE_AUDIO_CONNECTION_STATE_CHANGED);
         intentFilter.addAction(AudioManager.ACTION_HEADSET_PLUG);
         mContext.registerReceiver(new EarphoneBroadcastReceiver(), intentFilter);
     }
@@ -193,34 +195,52 @@ public class AutoEffectSwitchForSystem extends BaseHC {
             if (action != null) {
                 logI(TAG, "onReceive: action: " + action);
                 switch (action) {
-                    case BluetoothDevice.ACTION_ACL_CONNECTED -> {
-                        isEarphoneConnection = true;
-                        mIControlForSystem.updateLastEffectState();
-                        mIControlForSystem.setEffectToNone(context);
-                        dump();
+                    case BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED -> {
+                        int state = intent.getIntExtra(BluetoothA2dp.EXTRA_STATE, 0);
+                        switch (state) {
+                            case BluetoothLeAudio.STATE_CONNECTED -> connected();
+                            case BluetoothLeAudio.STATE_DISCONNECTED -> disconnected();
+                        }
                     }
-                    case BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
-                        isEarphoneConnection = false;
-                        mIControlForSystem.resetAudioEffect();
-                        dump();
+                    case BluetoothLeAudio.ACTION_LE_AUDIO_CONNECTION_STATE_CHANGED -> {
+                        int state = intent.getIntExtra(BluetoothLeAudio.EXTRA_STATE, 0);
+                        switch (state) {
+                            case BluetoothLeAudio.STATE_CONNECTED -> {
+                                if (isLeAudioConnected) return;
+                                connected();
+                                isLeAudioConnected = true;
+                            }
+                            case BluetoothLeAudio.STATE_DISCONNECTED -> {
+                                if (!isLeAudioConnected) return;
+                                disconnected();
+                                isLeAudioConnected = false;
+                            }
+                        }
                     }
                     case AudioManager.ACTION_HEADSET_PLUG -> {
                         if (intent.hasExtra("state")) {
                             int state = intent.getIntExtra("state", 0);
-                            if (state == 1) {
-                                isEarphoneConnection = true;
-                                mIControlForSystem.updateLastEffectState();
-                                mIControlForSystem.setEffectToNone(context);
-                                dump();
-                            } else if (state == 0) {
-                                isEarphoneConnection = false;
-                                mIControlForSystem.resetAudioEffect();
-                                dump();
+                            switch (state) {
+                                case 1 -> connected();
+                                case 0 -> disconnected();
                             }
                         }
                     }
                 }
             }
+        }
+
+        private void connected() {
+            isEarphoneConnection = true;
+            mIControlForSystem.updateLastEffectState();
+            mIControlForSystem.setEffectToNone(mContext);
+            dump();
+        }
+
+        private void disconnected() {
+            isEarphoneConnection = false;
+            mIControlForSystem.resetAudioEffect();
+            dump();
         }
 
         private void dump() {
