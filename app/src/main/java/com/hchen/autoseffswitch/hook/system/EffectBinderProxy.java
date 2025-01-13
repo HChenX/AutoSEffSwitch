@@ -47,14 +47,15 @@ public class EffectBinderProxy extends BaseHC {
                         Intent intent = (Intent) getResult();
                         String callerPackage = (String) getArgs(1);
                         if (intent == null) return;
-                        if (!"com.miui.misound".equals(callerPackage) || !"com.android.systemui".equals(callerPackage)) return;
-                        logI(TAG, "caller package: " + callerPackage + " mEffectInfoService: " + mEffectInfoService);
+                        if ("com.miui.misound".equals(callerPackage) || "com.android.systemui".equals(callerPackage)) {
+                            logI(TAG, "caller package: " + callerPackage + " mEffectInfoService: " + mEffectInfoService);
 
-                        Bundle bundle = new Bundle();
-                        if (mEffectInfoService == null) return;
-                        bundle.putBinder("effect_info", mEffectInfoService);
-                        intent.putExtra("effect_info", bundle);
-                        setResult(intent);
+                            Bundle bundle = new Bundle();
+                            if (mEffectInfoService == null) return;
+                            bundle.putBinder("effect_info", mEffectInfoService);
+                            intent.putExtra("effect_info", bundle);
+                            setResult(intent);
+                        }
                     }
                 }
         );
