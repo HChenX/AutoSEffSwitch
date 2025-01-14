@@ -30,7 +30,7 @@
     * 4: **Disconnect wired headphones** → Switch back to the **previous sound effect mode**.
 
 - **Required Scopes**: `System Framework`, `Audio Effects`, `System UI`.
-- After installing the module, **reboot your system or restart the audio effects app** to apply the
+- After installing the module, **reboot your system** to apply the
   changes.
 - If the module does not work properly, it may be due to compatibility issues. Please report bugs
   with logs.
