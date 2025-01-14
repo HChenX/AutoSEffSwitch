@@ -22,7 +22,10 @@ import android.bluetooth.BluetoothClass;
 
 /**
  * 蓝牙状态判断
+ *
+ * @deprecated
  */
+@Deprecated
 public class BluetoothClassHelper {
     public static final int PROFILE_HEADSET = 0;
     public static final int PROFILE_A2DP = 1;
