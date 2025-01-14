@@ -24,14 +24,10 @@
 - The module provides the following features:
 
 * Details:
-    *
-        1. **Connect Bluetooth headphones** → Switch to **Original Sound Mode**.
-    *
-        2. **Connect wired headphones** → Switch to **Original Sound Mode**.
-    *
-        3. **Disconnect Bluetooth headphones** → Switch back to the **previous sound effect mode**.
-    *
-        4. **Disconnect wired headphones** → Switch back to the **previous sound effect mode**.
+    * 1: **Connect Bluetooth headphones** → Switch to **Original Sound Mode**.
+    * 2: **Connect wired headphones** → Switch to **Original Sound Mode**.
+    * 3: **Disconnect Bluetooth headphones** → Switch back to the **previous sound effect mode**.
+    * 4: **Disconnect wired headphones** → Switch back to the **previous sound effect mode**.
 
 - **Required Scopes**: `System Framework`, `Audio Effects`, `System UI`.
 - After installing the module, **reboot your system or restart the audio effects app** to apply the
